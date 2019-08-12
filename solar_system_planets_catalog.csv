@@ -1,0 +1,9 @@
+name,mass,mass_error,semi_major_axis,semi_major_axis_error,orbital_period,eccentricity,eccentricity_error,star_teff,star_teff_error,star_mass,star_mass_error,star_radius,star_radius_error,star_metallicity,star_metallicity_error,radius,radius_error
+Mercury,0.0553,0.0001,0.387,0,88.0,0.205,0,5777,0,1,0,1,0,0,0,0.383,0.0001
+Venus,0.815,0.001,0.723,0,224.7,0.007,0,5777,0,1,0,1,0,0,0,0.949,0.0001
+Earth,1,0.0,1,0,365.2,0.017,0,5777,0,1,0,1,0,0,0,1.000,0.0001
+Mars,0.107,0.001,1.52,0,687.0,0.094,0,5777,0,1,0,1,0,0,0,0.532,0.001
+Jupiter,317.8,0.1,5.2,0,4331,0.049,0,5777,0,1,0,1,0,0,0,11.21,0.001
+Saturn,95.2,0.1,9.58,0,10747,0.057,0,5777,0,1,0,1,0,0,0,9.45,0.001
+Uranus,14.5,0.1,19.2,0,30589,0.046,0,5777,0,1,0,1,0,0,0,4.01,0.001
+Neptune,17.1,0.1,30.05,0,59800,0.011,0,5777,0,1,0,1,0,0,0,3.88,0.001
