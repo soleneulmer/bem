@@ -1,5 +1,6 @@
 import bem
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Load exoplanet and solar system planets dataset
 dataset = bem.load_dataset()
@@ -38,12 +39,13 @@ bem.plot_validation_curves(regr, dataset, name='depth')
 bem.plot_LIME_predictions(regr, dataset, train_test_sets)
 
 # Predict a new radius
-radius = bem.predict_radius(regr,
-                            my_planet=np.array([[1.63,
+radius = bem.predict_radius(my_planet=np.array([[1.63,
                                                  0.034,
                                                  0.02,
                                                  0.337,
                                                  3505.0,
                                                  0.342]]),
                             my_name=np.array(['GJ 357 b']),
+                            regr=regr,
                             jupiter_mass=False)
+plt.show()
