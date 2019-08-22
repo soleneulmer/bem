@@ -1,9 +1,10 @@
 language: python
 install:
-	- python setup.py install
+- python setup.py install
 script:
-	- echo test
-
+- echo test
 deploy:
-    provider: pypi
-    user: "soleneulmer"
+  provider: pypi
+  user: soleneulmer
+  password:
+    secure: cdTdamo+pdYbmXi71VnLHoyUsP7ywHkisJDL65VYwsIjqVvb3CWJ9ew/yRQnafzOT9YqZTfnFM3X7SC3FZltFQ2E5R//BM0dQ4nY01JRdOdCyA+wd8xpszSBNbhrrrLaHOvMCtEYOwDUvSOVRCfRk/DWy3n693XZlenaMvXETa3//KWswVkwRmO4d+JLAVw9UdSLP0JY1f1v/Xyy5GdkS3OOFgztsDD09F+7YGvQVnLRdmi+abS1+jIjwh66Gzq00ssTC8O732tJPXeku0BWCnsi8i7w7/A5FMvSFYFzU3NFLsX/gy+cSlHmgq9uZGKxmvDaCynBN/D4t8xPY1DcW9AeCnrZlPX1XxsUu1U1bP/rAV5v43qb++ZsIENktu2f39qAbyVSKhGvw/mn4KYd9KuT3OkpiMuXL8r1aAGOBW2U724JZwTHP1Vkz5MRStAR0X06FnSoD1VqnN2fkQZQjuiVNfutl8HMqCIdEkGCUM7w5ItEKYUboJmV7kCfEHt/yZhZLkpibCVzammUFf0h70zQUVvBLB4IB+b0Ii3ENCe/r6TZLklp7/v7BDgRnSASNWq30ke/034vXOkEQdLzOd6ljc0MpPbWB17Vi1GxsvaHu6YXRcGmw+CktQbAgEW18x5VLyIZ4XguOAIhlDMAOxxINfaJ7beCISUi0zv/G+g=
