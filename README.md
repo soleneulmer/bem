@@ -5,6 +5,7 @@ Predicting the radius of exoplanets based on its planetary and stellar parameter
 
 [![Build Status](https://travis-ci.org/soleneulmer/bem.svg?branch=master)](https://travis-ci.org/soleneulmer/bem)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/soleneulmer/bem/LICENSE)
+[![PyPI version](https://badge.fury.io/py/bem.svg)](https://badge.fury.io/py/bem)
 
 ### Branca Edmée Marques
 A portuguese scientist who worked on nuclear physics in France with Marie Curie
