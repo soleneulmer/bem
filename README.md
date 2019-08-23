@@ -18,3 +18,5 @@ git clone https://github.com/soleneulmer/bem.git
 cd bem
 python setup.py install
 ```
+
+![](figures/decision_tree.png)
