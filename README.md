@@ -1,7 +1,7 @@
 ## BEM :  beyond the exoplanet mass-radius relation with random forest
 Predicting the radius of exoplanets based on its planetary and stellar parameters
 
-<img src="figures/Bem.png" width="200">
+<img src="https://github.com/soleneulmer/bem/raw/master/figures/Bem.png" width="200">
 
 [![Build Status](https://travis-ci.org/soleneulmer/bem.svg?branch=master)](https://travis-ci.org/soleneulmer/bem)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/soleneulmer/bem/LICENSE)
@@ -24,7 +24,8 @@ python setup.py install
 
 ### A simple decision tree
 #### to predict exoplanet radius
-<img src="figures/decision_tree.png" width="200">
+
+<img src="https://github.com/soleneulmer/bem/raw/master/figures/decision_tree.png" width="200">
 
 ### How to run bem:
 #### 1. Load dataset and model
