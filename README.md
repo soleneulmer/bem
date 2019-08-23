@@ -24,6 +24,7 @@ python setup.py install
 <img src="figures/decision_tree.png" width="200">
 
 ### How to run bem:
+#### 1. Load dataset and model
 ```bash
 # Load exoplanet and solar system planets dataset
 dataset = bem.load_dataset()
@@ -34,7 +35,7 @@ bem.plot_dataset(dataset)
 # Build the random forest model and predict radius of the dataset
 regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset)
 ```
-Predict the radius of your favorite planet
+#### 2. Predict the radius of your favorite planet
 
 my_planet = [planetary_mass,
              semi major axis,
@@ -54,6 +55,8 @@ radius = bem.predict_radius(my_planet=np.array([[1.63,
                             regr=regr,
                             jupiter_mass=False)
 ```
+
+#### 3. Compute error bars for the radius predictions
 ```bash
 # Load exoplanet and solar system planets dataset with uncertainties
 dataset_errors = bem.load_dataset_errors()
@@ -61,4 +64,36 @@ dataset_errors = bem.load_dataset_errors()
 radii_test_output_error, _ = bem.computing_errorbars(regr,
                                                      dataset_errors,
                                                      train_test_sets)
+# Plot the test set, true radius versus RF predicted radius
+bem.plot_true_predicted(train_test_sets,
+                        y_test_predict,
+                        radii_test_output_error)
+
+```
+
+#### 4. Radial velocity dataset
+```bash
+# Load the radial velocity dataset
+dataset_rv = bem.load_dataset_RV()
+# Predict the radius of the RV dataset
+radii_RV_RF = regr.predict(dataset_rv)
+# Plot the predictions of the RV dataset
+bem.plot_dataset(dataset_rv, predicted_radii=radii_RV_RF, rv=True)
+```
+
+#### 5. Diagnostic plots
+```bash
+# Plot the learning curve
+bem.plot_learning_curve(regr, dataset)
+# Plot the validation curves
+bem.plot_validation_curves(regr, dataset, name='features')
+bem.plot_validation_curves(regr, dataset, name='tree')
+bem.plot_validation_curves(regr, dataset, name='depth')
+```
+
+#### 6. LIME explanations 
+see their [github](https://github.com/marcotcr/lime)
+```bash
+# Explain the RF predictions
+bem.plot_LIME_predictions(regr, dataset, train_test_sets)
 ```
