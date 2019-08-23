@@ -4,6 +4,8 @@ install:
 script:
 - echo test
 deploy:
+  on:
+    tags: true
   provider: pypi
   user: soleneulmer
   password:
