@@ -35,7 +35,7 @@ bem.plot_dataset(dataset)
 # Build the random forest model and predict radius of the dataset
 regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset)
 ```
-#### 2. Predict the radius of your favorite planet
+#### 2. Predict the radius of your planet
 
 my_planet = [planetary_mass,
              semi major axis,
