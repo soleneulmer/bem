@@ -36,16 +36,23 @@ bem.plot_validation_curves(regr, dataset, name='tree')
 bem.plot_validation_curves(regr, dataset, name='depth')
 
 # Explain the RF predictions
-bem.plot_LIME_predictions(regr, dataset, train_test_sets)
+exp = bem.plot_LIME_predictions(regr, dataset, train_test_sets)
 
 # Predict a new radius
-radius = bem.predict_radius(my_planet=np.array([[1.63,
-                                                 0.034,
-                                                 0.02,
-                                                 0.337,
-                                                 3505.0,
-                                                 0.342]]),
-                            my_name=np.array(['GJ 357 b']),
-                            regr=regr,
-                            jupiter_mass=False)
+# example given with GJ 357 b
+radius, my_pred_planet = bem.predict_radius(my_planet=np.array([[1.63,
+                                                                 0.034,
+                                                                 0.02,
+                                                                 0.337,
+                                                                 3505.0,
+                                                                 0.342]]),
+                                            my_name=np.array(['GJ 357 b']),
+                                            regr=regr,
+                                            jupiter_mass=False)
+
+# Plot LIME explanation for the newly predicted radius
+exp = bem.plot_LIME_predictions(regr, dataset, train_test_sets,
+                                my_pred_planet=my_pred_planet,
+                                my_true_radius=1.166)
+
 plt.show()

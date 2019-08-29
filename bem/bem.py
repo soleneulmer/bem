@@ -592,6 +592,14 @@ def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
     #                   np.array(['my planet b'])
     #         regr = random forest regression model
     # OUTPUTS: radius = planet's radius predicting with the RF model
+    #          my_pred_planet = pandas dataframe with the input features
+    #                           used by the random forest model
+    #                           Can be used as input in plot_LIME_predictions()
+    #                           The features are now:
+    #                           'mass', 'semi_major_axis',
+    #                           'temp_eq', 'star_luminosity',
+    #                           'star_radius', 'star_teff',
+    #                           'star_mass'
 
     if regr is None:
         # Loading the random forest model saved
@@ -616,16 +624,16 @@ def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
     # Computing stellar luminosity
     my_planet = fd.add_star_luminosity_dataset(my_planet)
     # Select features
-    my_planet = my_planet[['mass', 'semi_major_axis',
-                           'temp_eq', 'star_luminosity',
-                           'star_radius', 'star_teff',
-                           'star_mass']]
+    my_pred_planet = my_planet[['mass', 'semi_major_axis',
+                                'temp_eq', 'star_luminosity',
+                                'star_radius', 'star_teff',
+                                'star_mass']]
     # Radius prediction
-    print(my_planet.iloc[0])
-    radius = regr.predict(my_planet.iloc[0].values.reshape(1, -1))
+    print(my_pred_planet.iloc[0])
+    radius = regr.predict(my_pred_planet.iloc[0].values.reshape(1, -1))
     print('Predicted radius (Rearth): ', radius)
 
-    return radius
+    return radius, my_pred_planet
 
 
 def plot_dataset(dataset, predicted_radii=[], rv=False):
@@ -855,6 +863,8 @@ def plot_validation_curves(regr, dataset, name='features',
 
 def plot_LIME_predictions(regr, dataset, train_test_sets,
                           planets=[],
+                          my_pred_planet=pd.DataFrame(),
+                          my_true_radius=None,
                           feature_name=['mass',
                                         'semi_major_axis',
                                         'temp_eq',
@@ -862,6 +872,28 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
                                         'star_radius', 'star_teff',
                                         'star_mass',
                                         'radius']):
+    """
+    Compute and plot the LIME explanation for one or several radius predictions
+    made by the random forest model
+    INPUTS: REGR = the random forest model
+            DATASET = the input dataset from which the RF is built
+            TRAIN_TEST_SET = the training and test sets
+
+            PLANETS = list of indexes of the planets in the Test set,
+                      for which we want an LIME explanation
+                      Contains maximum 6 numbers
+    or
+            MY_PRED_PLANET = pandas dataset with the input features
+                        used by the random forest model
+                        > mass, semi_major_axis, temp_eq, star_luminosity,
+                          star_radius, star_teff, star_mass
+            The my_pred_planet output of predict_radius() can be used as
+            my_pred_planet input for this function
+
+            FEATURE_NAME = list of input features used by the random forest
+
+    OUTPUTS: EXP = LIME explainer, contains the LIME radius prediction
+    """
 
     # Data
     X_train, X_test, y_train, y_test = train_test_sets
@@ -883,7 +915,52 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
                                                        mode='regression')
 
     # Select planets to explain with LIME
-    if not planets:
+    if not my_pred_planet.empty:
+        exp = explainer.explain_instance(my_pred_planet.values[0],
+                                         regr.predict, num_features=7)
+        if my_true_radius:
+            print('True radius: ', my_true_radius)
+        else:
+            print('True radius was not provided')
+
+        lime_radius = exp.local_pred
+        rf_radius = exp.predicted_value
+
+        # My plot of exp_as_pyplot()
+        exp = exp.as_list()
+        vals = [x[1] for x in exp]
+        names = [x[0].replace("<=", r'$\leq$').replace('_',' ').replace('.00','').replace("<", "$<$").replace(">", "$>$") for x in exp]
+        # print(names)
+        vals.reverse()
+        names.reverse()
+        colors = ['C2' if x > 0 else 'C3' for x in vals]
+        pos = np.arange(len(exp)) + .5
+        # Plotting
+        plt.figure()
+        plt.xlabel('Weight')
+        plt.ylabel('Feature')
+        plt.title(my_pred_planet.index[0], loc='right')
+        rects = plt.barh(pos, vals, align='center', color=colors, alpha=0.5)
+        for i, rect in enumerate(rects):
+            # if rf_radius > 12.0:
+            plt.text(plt.xlim()[0]+0.03, rect.get_y()+0.2, str(names[i]))
+
+        # Text box
+        if my_true_radius:
+            textstr = '\n'.join((
+                r'True radius=%.2f$R_\oplus$' % (my_true_radius, ),
+                r'RF radius=%.2f$R_\oplus$' % (rf_radius, ),
+                r'LIME radius=%.2f$R_\oplus$' % (lime_radius, )))
+        else:
+            textstr = '\n'.join((
+                r'RF radius=%.2f$R_\oplus$' % (rf_radius, ),
+                r'LIME radius=%.2f$R_\oplus$' % (lime_radius, )))
+        # place a text box in upper left in axes coords
+        plt.text(-4, 0.1, textstr,
+                 bbox={'boxstyle': 'round', 'facecolor': 'white'})
+        return exp
+
+    elif not planets:
         planets.append(np.where(X_test.index == 'TRAPPIST-1 g')[0][0])
         planets.append(np.where(X_test.index == 'HATS-35 b')[0][0])
         planets.append(np.where(X_test.index == 'CoRoT-13 b')[0][0])
@@ -909,7 +986,7 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         exp = exp.as_list()
         vals = [x[1] for x in exp]
         names = [x[0].replace("<=", r'$\leq$').replace('_',' ').replace('.00','').replace("<", "$<$").replace(">", "$>$") for x in exp]
-        print(names)
+        # print(names)
         vals.reverse()
         names.reverse()
         colors = ['C2' if x > 0 else 'C3' for x in vals]
