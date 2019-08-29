@@ -99,5 +99,6 @@ bem.plot_validation_curves(regr, dataset, name='depth')
 see their [github](https://github.com/marcotcr/lime)
 ```bash
 # Explain the RF predictions
+# of the exoplanets from the test set
 bem.plot_LIME_predictions(regr, dataset, train_test_sets)
 ```
