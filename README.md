@@ -49,15 +49,15 @@ my_planet = [planetary_mass,
              stellar mass]
 ```bash
 # Predict a new radius
-radius = bem.predict_radius(my_planet=np.array([[1.63,
-                                                 0.034,
-                                                 0.02,
-                                                 0.337,
-                                                 3505.0,
-                                                 0.342]]),
-                            my_name=np.array(['GJ 357 b']),
-                            regr=regr,
-                            jupiter_mass=False)
+radius, my_pred_planet = bem.predict_radius(my_planet=np.array([[1.63,
+								 0.034,
+                                                 		 0.02,
+                                                 		 0.337,
+                                                 		 3505.0,
+                                                 		 0.342]]),
+                        		    my_name=np.array(['GJ 357 b']),
+                            		    regr=regr,
+                            		    jupiter_mass=False)
 ```
 
 #### 3. Compute error bars for the radius predictions
@@ -101,4 +101,9 @@ see their [github](https://github.com/marcotcr/lime)
 # Explain the RF predictions
 # of the exoplanets from the test set
 bem.plot_LIME_predictions(regr, dataset, train_test_sets)
+# LIME explanation for your planet
+# in this case GJ 357 b
+bem.plot_LIME_predictions(regr, dataset, train_test_sets,
+                          my_pred_planet=my_pred_planet,
+                          my_true_radius=1.166)
 ```
