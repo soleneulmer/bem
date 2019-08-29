@@ -5,7 +5,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 output = os.path.join(here, 'published_output/')
 
 setup(name='bem',
-      version='0.1.10',
+      version='0.1.11',
       description='Random forest for exoplanets',
       long_description=open("README.md").read(),
       long_description_content_type='text/markdown',
