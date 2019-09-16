@@ -44,13 +44,15 @@ def getTeqpl_error(Teffst, aR, ecc, A=0, f=1/4.):
 
 
 def getHtidal(Ms, Rp, a, e):
-    # a   -- in AU, semi major axis
+    """
+    Ms  -- stellar mass
+    Rp  -- radius planet
+    a   -- in AU, semi major axis
+    e   -- eccentricity
+    """
     # Teq -- in Kelvins, planetary equilibrium temperature
     # M   -- in Jupiter masses, planetary mass
     # Z   -- [Fe/H], stellar metallicity
-    # Rp  -- radius planet
-    # Ms  -- stellar mass
-    # e   -- eccentricity
     # G   -- gravitational constant
     #
     #
@@ -67,5 +69,5 @@ def getHtidal(Ms, Rp, a, e):
 
 
 def safronov_nb(Mp, Ms, Rp, a):
-    # Ozturk 2018, Safronov 1972
+    """Ozturk 2018, Safronov 1972"""
     return (Mp/Ms) * (a/Rp)

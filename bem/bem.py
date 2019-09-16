@@ -39,7 +39,7 @@ if os.path.exists(os.path.join(published_dir, 'r2_0.84_2019-07-23_17:05.pkl')):
     pass
 else:
     published_dir = os.path.join(sys.prefix, 'published_output')
-    
+
 saved_pickle_model = os.path.join(published_dir, 'r2_0.84_2019-07-23_17:05.pkl')
 
 
@@ -50,18 +50,18 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_15April.csv',
                                 'star_radius', 'star_teff',
                                 'star_mass', 'radius'],
                  solar=True):
-    # Select exoplanet in the catalog
-    # which have mass and radius measurements
-    # as well as stellar parameters
-    # This dataset will be used to train and test the Random Forest
-    #
-    # INPUTS: catalog_exoplanet = CSV file from exoplanet.eu
-    #         catalog_solar = CSV file from Planetary sheet
-    #         feature_names = list of features to select in the dataset
-    # OUPUTS: dataset_exo = pandas struct with exoplanets
-    #                       with mass & radius measurements
-    #                       the mass/radius are in Earth massses/radii
-    #
+    """Select exoplanet in the catalog
+    which have mass and radius measurements
+    as well as stellar parameters
+    This dataset will be used to train and test the Random Forest
+
+    INPUTS: catalog_exoplanet = CSV file from exoplanet.eu
+            catalog_solar = CSV file from Planetary sheet
+            feature_names = list of features to select in the dataset
+    OUPUTS: dataset_exo = pandas struct with exoplanets
+                          with mass & radius measurements
+                          the mass/radius are in Earth massses/radii"""
+
 
     print('\nLoading exoplanet dataset and solar system planets:')
     # Importing exoplanet dataset
@@ -131,20 +131,20 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_15April.csv',
 def load_dataset_errors(cat_exoplanet='exoplanet.eu_catalog_15April.csv',
                         cat_solar='solar_system_planets_catalog.csv',
                         solar=True):
-    # Select exoplanet in the catalog
-    # which have uncertainty measurements
-    # as well as stellar parameters
-    # If there is no uncertainty measurement, the uncertainty is set to
-    # the 0.9 quantile of the distribution of uncertainties
-    # This dataset will be used to compute error bars for the test set
-    #
-    # INPUTS: catalog_exoplanet = CSV file from exoplanet.eu
-    #         catalog_solar = CSV file from Planetary sheet
-    #         features = list of features to select in the dataset
-    # OUPUTS: dataset_exo = pandas struct with exoplanets
-    #                       with mass & radius measurements
-    #                       the mass/radius are in Earth massses/radii
-    #
+    """Select exoplanet in the catalog
+    which have uncertainty measurements
+    as well as stellar parameters
+    If there is no uncertainty measurement, the uncertainty is set to
+    the 0.9 quantile of the distribution of uncertainties
+    This dataset will be used to compute error bars for the test set
+
+    INPUTS: catalog_exoplanet = CSV file from exoplanet.eu
+            catalog_solar = CSV file from Planetary sheet
+            features = list of features to select in the dataset
+    OUPUTS: dataset_exo = pandas struct with exoplanets
+                          with mass & radius measurements
+                          the mass/radius are in Earth massses/radii"""
+
 
     print('\nLoading exoplanet dataset and solar system planets:')
 
@@ -291,16 +291,16 @@ def load_dataset_RV(catalog_exoplanet='exoplanet.eu_catalog_15April.csv',
                                    'star_metallicity',
                                    'star_radius',
                                    'star_teff', 'star_mass']):
-    # Select exoplanet in the catalog which are detected by RV
-    # and do not have mass measurement.
-    # This dataset will be used to later predict their masses
-    #
-    # INPUTS: catalog_exoplanet = CSV file from exoplanet.eu
-    #         features = list of features to select in the dataset
-    # OUPUTS: dataset_radial = pandas struct with exoplanets
-    #                          detected by RV without radius measurements
-    #                          the mass is in Earth massses
-    #
+    """Select exoplanet in the catalog which are detected by RV
+    and do not have mass measurement.
+    This dataset will be used to later predict their masses
+
+    INPUTS: catalog_exoplanet = CSV file from exoplanet.eu
+            features = list of features to select in the dataset
+    OUPUTS: dataset_radial = pandas struct with exoplanets
+                             detected by RV without radius measurements
+                             the mass is in Earth massses"""
+
 
     print('\nLoading exoplanet dataset found with RVs:')
     catalog_exoplanet = os.path.join(published_dir, catalog_exoplanet)
@@ -373,24 +373,24 @@ def random_forest_regression(dataset,
                              model=saved_pickle_model,
                              fit=False):
 
-    # Split the dataset into a training (75%) and testing set (25%)
-    # Removing 3 outliers planets from both sets
-    #
-    # If fit is True:
-    # Fitting the hyperparameters of the random forest regression
-    # otherwise loading a already fitted model
-    #
-    # 
-    # INPUTS: dataset = pandas dataframe with all the exoplanets
-    #                   and their planetary and stellar parameters as features
-    #         model = random forest model with best fit hyperparameters
-    #         fit = boolean, to do the fitting (True) or not (False)
-    # OUPUTS: regr = the random forest regression model
-    #         y_test_predict = radius predictions of the test set
-    #         train_test_values = arrays with the values of the train and test sets
-    #         train_test_sets = pandas dataframes with exoplanets and features names
-    #                           as well as the values
-    #
+    """Split the dataset into a training (75%) and testing set (25%)
+    Removing 3 outliers planets from both sets
+
+    If fit is True:
+    Fitting the hyperparameters of the random forest regression
+    otherwise loading a already fitted model
+
+
+    INPUTS: dataset = pandas dataframe with all the exoplanets
+                      and their planetary and stellar parameters as features
+            model = random forest model with best fit hyperparameters
+            fit = boolean, to do the fitting (True) or not (False)
+    OUPUTS: regr = the random forest regression model
+            y_test_predict = radius predictions of the test set
+            train_test_values = arrays with the values of the train and test sets
+            train_test_sets = pandas dataframes with exoplanets and features names
+                              as well as the values"""
+
 
     # Preparing the training and test sets
     # ------------------------------------
@@ -469,10 +469,10 @@ def random_forest_regression(dataset,
         outdir = 'bem_output'
         if not os.path.exists(outdir):
             os.mkdir(outdir)
-            
+
         name_Rf = 'r2_' + str(round(rf.best_score_, 2)) + '_' + str(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M")) + '.pkl'
         name_Rf = os.path.join(outdir, name_Rf)
-        
+
         joblib.dump(regr, name_Rf)
         print('RF model save in : ', name_Rf)
 
@@ -511,20 +511,19 @@ def random_forest_regression(dataset,
 
 
 def computing_errorbars(regr, dataset_errors, train_test_sets):
-    #
-    # INPUTS: regr = random forest regression model
-    #         dataset_errors = pandas dataframe with each feature
-    #                          and their associated uncertainties
-    #         train_test_sets = pandas dataframes with exoplanets
-    #                           and features names
-    #                           as well as the values
-    #
-    # OUTPUTS: radii_test_output_error = error on the predicted
-    #                                    radius for the Test set
-    #          radii_test_input_error = original uncertainty
-    #                                   on the radius measurements
-    #
-    
+    """INPUTS: regr = random forest regression model
+            dataset_errors = pandas dataframe with each feature
+                             and their associated uncertainties
+            train_test_sets = pandas dataframes with exoplanets
+                              and features names
+                              as well as the values
+
+    OUTPUTS: radii_test_output_error = error on the predicted
+                                       radius for the Test set
+             radii_test_input_error = original uncertainty
+                                      on the radius measurements"""
+
+
 
     # Original train and test sets
     X_train, X_test, y_train, y_test = train_test_sets
@@ -577,35 +576,35 @@ def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
                    my_name=np.array(['My planet b']),
                    regr=None,
                    jupiter_mass=False):
-    # Predict radius of a planet
-    # given the planetary mass, semi major axis, eccentricity,
-    # stellar radius, star effective temperature, and stellar mass
-    # 
-    # INPUTS: my_planet = array with a shape (1,6)
-    #                     np.array([[planetary mass,
-    #                                semi major axis,
-    #                                eccentricity,
-    #                                star_radius,
-    #                                star_teff,
-    #                                star_mass]])
-    #         my_name = array with a shape (1,)
-    #                   np.array(['my planet b'])
-    #         regr = random forest regression model
-    # OUTPUTS: radius = planet's radius predicting with the RF model
-    #          my_pred_planet = pandas dataframe with the input features
-    #                           used by the random forest model
-    #                           Can be used as input in plot_LIME_predictions()
-    #                           The features are now:
-    #                           'mass', 'semi_major_axis',
-    #                           'temp_eq', 'star_luminosity',
-    #                           'star_radius', 'star_teff',
-    #                           'star_mass'
+    """Predict radius of a planet
+    given the planetary mass, semi major axis, eccentricity,
+    stellar radius, star effective temperature, and stellar mass
+
+    INPUTS: my_planet = array with a shape (1,6)
+                        np.array([[planetary mass,
+                                   semi major axis,
+                                   eccentricity,
+                                   star_radius,
+                                   star_teff,
+                                   star_mass]])
+            my_name = array with a shape (1,)
+                      np.array(['my planet b'])
+            regr = random forest regression model
+    OUTPUTS: radius = planet's radius predicting with the RF model
+             my_pred_planet = pandas dataframe with the input features
+                              used by the random forest model
+                              Can be used as input in plot_LIME_predictions()
+                              The features are now:
+                              'mass', 'semi_major_axis',
+                              'temp_eq', 'star_luminosity',
+                              'star_radius', 'star_teff',
+                              'star_mass'"""
 
     if regr is None:
         # Loading the random forest model saved
         print('Loading random forest model: ', saved_pickle_model)
         regr = joblib.load(saved_pickle_model)
-    
+
     print('\nPredicting radius for planet:\n')
     my_planet = pd.DataFrame(data=my_planet,
                              index=my_name,
@@ -680,10 +679,9 @@ def plot_dataset(dataset, predicted_radii=[], rv=False):
 
 def plot_true_predicted(train_test_sets, radii_test_RF,
                         radii_test_output_error):
-    #
-    # Plot the residuals on the test set
-    # between True radius and Random forest
-    #
+    """Plot the residuals on the test set
+    between True radius and Random forest"""
+
     X_train, X_test, y_train, y_test = train_test_sets
     plt.figure()
     plt.errorbar(radii_test_RF, y_test.values,
@@ -700,17 +698,16 @@ def plot_true_predicted(train_test_sets, radii_test_RF,
 
 
 def plot_learning_curve(regr, dataset, save=False, fit=False):
-    # INPUTS: regr = random forest regression model
-    #         dataset = pandas dataframe with features and labels
-    #         save = bool, writes (True) or not (False) the scores
-    #         fit = bool, computes the score if True
-    #
-    # OUTPUTS: Written files
-    #
-    # Cross validation with 100 iterations
-    # to get smoother mean test and train score curves,
-    # each time with 20% data randomly selected as a validation set.
-    #
+    """INPUTS: regr = random forest regression model
+            dataset = pandas dataframe with features and labels
+            save = bool, writes (True) or not (False) the scores
+            fit = bool, computes the score if True
+
+    OUTPUTS: Written files
+
+    Cross validation with 100 iterations
+    to get smoother mean test and train score curves,
+    each time with 20% data randomly selected as a validation set."""
 
     features = dataset.iloc[:, :-1].values   # mass, teq, etc
     labels = dataset.iloc[:, -1].values      # radius
@@ -766,14 +763,13 @@ def plot_learning_curve(regr, dataset, save=False, fit=False):
 
 def plot_validation_curves(regr, dataset, name='features',
                            save=False, fit=False):
-    # INPUTS: regr = random forest regression model
-    #         dataset = pandas dataframe with features and labels
-    #         name = str, can be 'features', 'tree', 'depth'
-    #         save = bool, writes (True) or not (False) the scores
-    #         fit = bool, computes the score if True
-    #
-    # OUTPUTS: Written files
-    #
+    """INPUTS: regr = random forest regression model
+            dataset = pandas dataframe with features and labels
+            name = str, can be 'features', 'tree', 'depth'
+            save = bool, writes (True) or not (False) the scores
+            fit = bool, computes the score if True
+
+    OUTPUTS: Written files"""
 
     features = dataset.iloc[:, :-1].values   # mass, teq, etc
     labels = dataset.iloc[:, -1].values      # radius

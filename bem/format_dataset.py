@@ -6,9 +6,9 @@ from uncertainties import ufloat
 
 
 def read_file_pandas(csv_file, radius=True):
-    # Read the CSV file with Pandas
-    # in a dataset
-    # with specific parameters
+    """Read the CSV file with Pandas
+    in a dataset
+    with specific parameters"""
     dataset = pd.read_csv(csv_file)
     if radius is True:
         dataset = dataset[['mass', 'mass_error_max', 'semi_major_axis',
@@ -23,13 +23,13 @@ def read_file_pandas(csv_file, radius=True):
 
 
 def get_semi_amplitude_k(ecc, m_star, m_p, a, inc):
-    # Compute the velocity semi amplitude K
-    # ecc    : eccentricity
-    # m_star : star mass(solar mass)
-    # m_p    : planet mass(jupiter mass)
-    # a      : semi major axis
-    # inc    : inclination
-    # Return k in m.s-1
+    """Compute the velocity semi amplitude K
+    ecc    : eccentricity
+    m_star : star mass(solar mass)
+    m_p    : planet mass(jupiter mass)
+    a      : semi major axis
+    inc    : inclination
+    Return k in m.s-1"""
     # -------------------------------------------------------
     sqrt_g = 28.4329  # m.s-1
     m_p_solar = m_p * jupiterMass.to('solMass')
@@ -41,7 +41,7 @@ def get_semi_amplitude_k(ecc, m_star, m_p, a, inc):
 
 
 def add_k_dataset(dataset):
-    # Add the velocity semi amplitude to dataset
+    """add the velocity semi amplitude to dataset"""
     k_planet = [get_semi_amplitude_k(ecc, m_star, m_p, a, inc)
                 for ecc, m_star, m_p, a, inc
                 in zip(dataset.eccentricity, dataset.star_mass,
@@ -80,11 +80,11 @@ def add_temp_eq_error_dataset(dataset):
 
 
 def add_star_luminosity_dataset(dataset):
-    # Compute the stellar luminosity
-    # L_star/L_sun = (R_star/R_sun)**2 * (Teff_star / Teff_sun)**4
-    # Radius star is already expressed in Sun radii in the dataset
-    # lum_sun    = 3.828 * 10**26   # Watt
-    # radius_sun = 6.95508 * 10**8  # meters
+    """Compute the stellar luminosity
+    L_star/L_sun = (R_star/R_sun)**2 * (Teff_star / Teff_sun)**4
+    Radius star is already expressed in Sun radii in the dataset
+    lum_sun    = 3.828 * 10**26   # Watt
+    radius_sun = 6.95508 * 10**8  # meters"""
     Teff_sun = 5777.0                 # Kelvin
     L_star = [R_star**2 * (Teff_star / Teff_sun)**4
               for R_star, Teff_star
@@ -94,11 +94,11 @@ def add_star_luminosity_dataset(dataset):
 
 
 def add_star_luminosity_error_dataset(dataset):
-    # Compute the stellar luminosity
-    # L_star/L_sun = (R_star/R_sun)**2 * (Teff_star / Teff_sun)**4
-    # Radius star is already expressed in Sun radii in the dataset
-    # lum_sun    = 3.828 * 10**26   # Watt
-    # radius_sun = 6.95508 * 10**8  # meters
+    """Compute the stellar luminosity
+    L_star/L_sun = (R_star/R_sun)**2 * (Teff_star / Teff_sun)**4
+    Radius star is already expressed in Sun radii in the dataset
+    lum_sun    = 3.828 * 10**26   # Watt
+    radius_sun = 6.95508 * 10**8  # meters"""
     Teff_sun = 5778                 # Kelvin
     L_star = [ufloat(R_star, abs(R_star_error))**2 *
               (ufloat(Teff_star, abs(Teff_star_error)) / Teff_sun)**4
@@ -113,8 +113,8 @@ def add_star_luminosity_error_dataset(dataset):
 
 
 def add_insolation_dataset(dataset):
-    # Compute the insolation flux
-    # S / S_earth = (L_star / L_sun) * (AU / a)**2
+    """Compute the insolation flux
+    S / S_earth = (L_star / L_sun) * (AU / a)**2"""
     insolation_earth = 1.37 * 10**3   # Watts/m2
     # insolation = [insolation_earth * (l_star * (1 / a))
     #               for l_star, a
