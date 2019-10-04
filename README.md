@@ -42,23 +42,15 @@ regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset)
 ```
 #### 2. Predict the radius of your planet
 
-my_planet = [planetary_mass,
-             semi major axis,
-             eccentricity,
-             stellar radius,
-             stellar effective temperature,
-             stellar mass]
-
-or with errors
-
-my_planet = [planetary_mass, error,
-             semi major axis, error,
-             eccentricity, error,
-             stellar radius, error,
-             stellar effective temperature, error,
-             stellar mass, error]
 ```bash
-# Predict a new radius
+# Predict a new radius				    with error
+# my_planet = [planetary_mass (Me, Mj)              or  my_planet = [planetary_mass, planetary mass error,
+#              semi major axis (AU),                                semi major axis, semi major axis error,
+#              eccentricity,					    eccentricity, eccentricity error,
+#              stellar radius (Rsun),				    stellar radius, stellar radius error,
+#              stellar effective temperature (K), 		    stellar effective temperature, teff error,
+#              stellar mass (Msun)]				    stellar mass (Msun), stellar mass error]
+
 radius, my_pred_planet = bem.predict_radius(my_planet=np.array([[1.63,
 								 0.034,
                                                  		 0.02,
