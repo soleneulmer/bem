@@ -49,7 +49,7 @@ my_planet = [planetary_mass,
              stellar effective temperature,
              stellar mass]
 
-or with error bars
+or with errors
 
 my_planet = [planetary_mass, error,
              semi major axis, error
