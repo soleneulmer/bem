@@ -40,15 +40,18 @@ exp = bem.plot_LIME_predictions(regr, dataset, train_test_sets)
 
 # Predict a new radius
 # example given with GJ 357 b
-radius, my_pred_planet = bem.predict_radius(my_planet=np.array([[1.63,
-                                                                 0.034,
-                                                                 0.02,
-                                                                 0.337,
-                                                                 3505.0,
-                                                                 0.342]]),
+radius, my_pred_planet = bem.predict_radius(my_planet=np.array([[1.63, 0.1,
+                                                                 0.034, 0.01,
+                                                                 0.02, 0.005,
+                                                                 0.337, 0.1,
+                                                                 3505.0, 50,
+                                                                 0.342, 0.1]]),
                                             my_name=np.array(['GJ 357 b']),
                                             regr=regr,
-                                            jupiter_mass=False)
+                                            jupiter_mass=False,
+                                            error_bar=True)
+# If error_bar is True
+# print('Radius: ', radius[0][0], '+-', radius[1])
 
 # Plot LIME explanation for the newly predicted radius
 exp = bem.plot_LIME_predictions(regr, dataset, train_test_sets,

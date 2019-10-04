@@ -48,6 +48,15 @@ my_planet = [planetary_mass,
              stellar radius,
              stellar effective temperature,
              stellar mass]
+
+or with error bars
+
+my_planet = [planetary_mass, error,
+             semi major axis, error
+             eccentricity, error,
+             stellar radius, error,
+             stellar effective temperature, error,
+             stellar mass, error]
 ```bash
 # Predict a new radius
 radius, my_pred_planet = bem.predict_radius(my_planet=np.array([[1.63,
@@ -58,7 +67,10 @@ radius, my_pred_planet = bem.predict_radius(my_planet=np.array([[1.63,
                                                  		 0.342]]),
                         		    my_name=np.array(['GJ 357 b']),
                             		    regr=regr,
-                            		    jupiter_mass=False)
+                            		    jupiter_mass=False,
+					    error_bar=False)
+# If error_bar is True
+# print('Radius: ', radius[0][0], '+-', radius[1])
 ```
 
 #### 3. Compute error bars for the radius predictions

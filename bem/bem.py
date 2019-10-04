@@ -575,7 +575,8 @@ def computing_errorbars(regr, dataset_errors, train_test_sets):
 def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
                    my_name=np.array(['My planet b']),
                    regr=None,
-                   jupiter_mass=False):
+                   jupiter_mass=False,
+                   error_bar=False):
     """Predict radius of a planet
     given the planetary mass, semi major axis, eccentricity,
     stellar radius, star effective temperature, and stellar mass
@@ -590,6 +591,16 @@ def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
             my_name = array with a shape (1,)
                       np.array(['my planet b'])
             regr = random forest regression model
+            jupiter_mass = bool, True is the planet's mass is given in Jupiter mass
+            error_bar = bool, True if an error is provided for each parameter
+                        such as
+                        my_planet = np.array([[planetary mass, planetary mass error,
+                                   semi major axis, semi major axis error,
+                                   eccentricity, eccentricity error,
+                                   star_radius, star_radius error,
+                                   star_teff, star_teff error,
+                                   star_mass, star_mass error]])
+
     OUTPUTS: radius = planet's radius predicting with the RF model
              my_pred_planet = pandas dataframe with the input features
                               used by the random forest model
@@ -604,35 +615,89 @@ def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
         # Loading the random forest model saved
         print('Loading random forest model: ', saved_pickle_model)
         regr = joblib.load(saved_pickle_model)
-
-    print('\nPredicting radius for planet:\n')
-    my_planet = pd.DataFrame(data=my_planet,
-                             index=my_name,
-                             columns=np.array(['mass', 'semi_major_axis',
-                                               'eccentricity',
-                                               'star_radius',
-                                               'star_teff', 'star_mass']))
-    # Changing mass units to Earth mass
-    if jupiter_mass:
-        my_planet = fd.jupiter_to_earth_mass(my_planet, 'mass')
     else:
-        print('Planetary mass is given in Earth mass')
+        pass
 
-    # Computing equilibrium temperature
-    my_planet = fd.add_temp_eq_dataset(my_planet)
-    # Computing stellar luminosity
-    my_planet = fd.add_star_luminosity_dataset(my_planet)
-    # Select features
-    my_pred_planet = my_planet[['mass', 'semi_major_axis',
-                                'temp_eq', 'star_luminosity',
-                                'star_radius', 'star_teff',
-                                'star_mass']]
-    # Radius prediction
-    print(my_pred_planet.iloc[0])
-    radius = regr.predict(my_pred_planet.iloc[0].values.reshape(1, -1))
-    print('Predicted radius (Rearth): ', radius)
+    if error_bar:
+        print('\nPredicting radius for planet:\n')
+        my_planet = pd.DataFrame(data=my_planet,
+                                 index=my_name,
+                                 columns=np.array(['mass', 'mass_error',
+                                                   'semi_major_axis', 'semi_major_axis_error',
+                                                   'eccentricity', 'eccentricity_error', 
+                                                   'star_radius', 'star_radius_error',
+                                                   'star_teff', 'star_teff_error',
+                                                   'star_mass', 'star_mass_error']))
+        # Changing mass units to Earth mass
+        if jupiter_mass:
+            my_planet = fd.jupiter_to_earth_mass(my_planet, 'mass')
+            my_planet = fd.jupiter_to_earth_mass(my_planet, 'mass_error')
+        else:
+            print('Planetary mass is given in Earth mass')
 
-    return radius, my_pred_planet
+        # Computing equilibrium temperature
+        my_planet = fd.add_temp_eq_error_dataset(my_planet)
+        # Computing stellar luminosity
+        my_planet = fd.add_star_luminosity_error_dataset(my_planet)
+
+        # Planet with error bars
+        print('Planet with error bars\n', my_planet.iloc[0])
+
+        # Radius error prediction
+        my_pred_planet = my_planet[['mass', 'mass_error',
+                                    'semi_major_axis', 'semi_major_axis_error',
+                                    'temp_eq', 'temp_eq_error',
+                                    'star_luminosity', 'star_luminosity_error',
+                                    'star_radius', 'star_radius_error',
+                                    'star_teff', 'star_teff_error',
+                                    'star_mass', 'star_mass_error']]
+
+        # Feature / feature error
+        features_with_errors = my_pred_planet.iloc[0].values.reshape(1, -1)
+        radius_error = regr.predict(mvn(features_with_errors[0, ::2],
+                                        np.diag(features_with_errors[0, 1::2]),
+                                        allow_singular=True).rvs(1000)).std()
+
+        # Radius prediction
+        my_pred_planet = my_planet[['mass', 'semi_major_axis',
+                                    'temp_eq', 'star_luminosity',
+                                    'star_radius', 'star_teff',
+                                    'star_mass']]
+        radius = regr.predict(my_pred_planet.iloc[0].values.reshape(1, -1))
+
+        # Print
+        print('Predicted radius (Rearth): ', radius, '+-', radius_error)
+        return [radius, radius_error], my_pred_planet
+
+    else:
+        print('\nPredicting radius for planet:\n')
+        my_planet = pd.DataFrame(data=my_planet,
+                                 index=my_name,
+                                 columns=np.array(['mass', 'semi_major_axis',
+                                                   'eccentricity',
+                                                   'star_radius',
+                                                   'star_teff', 'star_mass']))
+        # Changing mass units to Earth mass
+        if jupiter_mass:
+            my_planet = fd.jupiter_to_earth_mass(my_planet, 'mass')
+        else:
+            print('Planetary mass is given in Earth mass')
+
+        # Computing equilibrium temperature
+        my_planet = fd.add_temp_eq_dataset(my_planet)
+        # Computing stellar luminosity
+        my_planet = fd.add_star_luminosity_dataset(my_planet)
+        # Select features
+        my_pred_planet = my_planet[['mass', 'semi_major_axis',
+                                    'temp_eq', 'star_luminosity',
+                                    'star_radius', 'star_teff',
+                                    'star_mass']]
+        # Radius prediction
+        print(my_pred_planet.iloc[0])
+        radius = regr.predict(my_pred_planet.iloc[0].values.reshape(1, -1))
+        print('Predicted radius (Rearth): ', radius)
+
+        return radius, my_pred_planet
 
 
 def plot_dataset(dataset, predicted_radii=[], rv=False):
