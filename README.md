@@ -52,7 +52,7 @@ my_planet = [planetary_mass,
 or with errors
 
 my_planet = [planetary_mass, error,
-             semi major axis, error
+             semi major axis, error,
              eccentricity, error,
              stellar radius, error,
              stellar effective temperature, error,
