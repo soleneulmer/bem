@@ -13,6 +13,8 @@ A portuguese scientist who worked on nuclear physics in France with Marie Curie
 
 
 ### To install bem
+Requirement: scikit-learn (0.20.3)
+
 ```bash
 pip install bem
 ```
@@ -22,7 +24,6 @@ git clone https://github.com/soleneulmer/bem.git
 cd bem
 python setup.py install
 ```
-Requirement: scikit-learn: sklearn 0.20.3
 
 ### A simple decision tree
 #### to predict exoplanet radius
