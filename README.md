@@ -22,6 +22,7 @@ git clone https://github.com/soleneulmer/bem.git
 cd bem
 python setup.py install
 ```
+Requirement: scikit-learn: sklearn 0.20.3
 
 ### A simple decision tree
 #### to predict exoplanet radius
