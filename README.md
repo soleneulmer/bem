@@ -13,7 +13,7 @@ A portuguese scientist who worked on nuclear physics in France with Marie Curie
 
 
 ### To install bem
-Requirement: scikit-learn (0.20.3)
+Requirement: Python 3.7, Scikit-learn 0.20.3
 
 ```bash
 pip install bem
