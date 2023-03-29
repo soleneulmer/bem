@@ -16,7 +16,8 @@ from sklearn.model_selection import learning_curve, validation_curve
 from sklearn.model_selection import ShuffleSplit
 from sklearn.metrics import r2_score
 from sklearn.metrics import accuracy_score
-from sklearn.externals import joblib
+# from sklearn.externals import joblib
+import joblib
 from scipy.stats import binned_statistic
 from scipy.stats import multivariate_normal as mvn
 import lime
@@ -43,7 +44,7 @@ else:
 saved_pickle_model = os.path.join(published_dir, 'r2_0.84_2019-07-23_17:05.pkl')
 
 
-def load_dataset(cat_exoplanet='exoplanet.eu_catalog_15April.csv',
+def load_dataset(cat_exoplanet='exoplanet.eu_catalog_23March2023.csv',
                  cat_solar='solar_system_planets_catalog.csv',
                  feature_names=['mass', 'semi_major_axis',
                                 'eccentricity', 'star_metallicity',
