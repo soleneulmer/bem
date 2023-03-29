@@ -14,11 +14,11 @@ def read_file_pandas(csv_file, radius=True):
         dataset = dataset[['mass', 'mass_error_max', 'semi_major_axis',
                            'orbital_period', 'eccentricity',
                            'star_radius', 'star_teff', 'star_mass',
-                           'radius', 'radius_error_max']]
+                           'radius', 'radius_error_max', 'mass_detection_type']]
     else:
         dataset = dataset[['mass', 'mass_error_max', 'semi_major_axis',
                            'orbital_period', 'eccentricity',
-                           'star_radius', 'star_teff', 'star_mass']]
+                           'star_radius', 'star_teff', 'star_mass', 'mass_detection_type']]
     return dataset
 
 

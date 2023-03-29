@@ -68,6 +68,10 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
     # Importing exoplanet dataset
     cat_exoplanet = os.path.join(published_dir, cat_exoplanet)
     dataset_exo = pd.read_csv(cat_exoplanet, index_col=0)
+    
+    # Removing the mass detected with Theoretical (Chen&Kipping 2017 MR relation) & TTV, Timing
+    dataset_exo = dataset_exo[dataset_exo.mass_detection_type.isin(['Radial Velocity', np.nan, 'Astrometry', 'Spectrum'])]
+    
     # Importing Solar system dataset
     # Masses and Radii already in Earth metrics
     cat_solar = os.path.join(published_dir, cat_solar)
@@ -704,10 +708,13 @@ def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
 def plot_dataset(dataset, predicted_radii=[], rv=False):
 
     if not rv:
-        # Remove outlier planets
-        dataset = dataset.drop(['Kepler-11 g'])
-        dataset = dataset.drop(['K2-95 b'])
-        dataset = dataset.drop(['HATS-12 b'])
+        try:
+            # Remove outlier planets
+            dataset = dataset.drop(['Kepler-11 g'])
+            dataset = dataset.drop(['K2-95 b'])
+            dataset = dataset.drop(['HATS-12 b'])
+        except KeyError:
+            pass
 
         # Plot the original dataset
         fig = plt.figure()
