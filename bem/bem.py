@@ -69,7 +69,7 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
     cat_exoplanet = os.path.join(published_dir, cat_exoplanet)
     dataset_exo = pd.read_csv(cat_exoplanet, index_col=0)
     
-    # Removing the mass detected with Theoretical (Chen&Kipping 2017 MR relation) & TTV, Timing
+    # Removing the masses detected with Theoretical (Chen&Kipping 2017 MR relation) & TTV, Timing
     dataset_exo = dataset_exo[dataset_exo.mass_detection_type.isin(['Radial Velocity', np.nan, 'Astrometry', 'Spectrum'])]
     
     # Importing Solar system dataset
@@ -425,21 +425,30 @@ def random_forest_regression(dataset,
     X_test = X_test.append(X_test_sol)
     y_test = y_test.append(y_test_sol)
 
-    # Outliers in the sample
-    # Remove HATS-12 b from the training set
-    X_test = X_test.drop(['HATS-12 b'])
-    y_test = y_test.drop(labels=['HATS-12 b'])
-    print('\nHATS-12 b removes from test set\n')
 
-    # Remove K2-95 b from the training set
-    X_train = X_train.drop(['K2-95 b'])
-    y_train = y_train.drop(labels=['K2-95 b'])
-    print('\nK2-95 b removes from training set\n')
-
-    # Remove Kepler-11 g from the training set
-    X_train = X_train.drop(['Kepler-11 g'])
-    y_train = y_train.drop(labels=['Kepler-11 g'])
-    print('\nKepler-11 g removes from training set\n')
+    try:
+        # Outliers in the sample
+        # Remove HATS-12 b from the training set
+        X_test = X_test.drop(['HATS-12 b'])
+        y_test = y_test.drop(labels=['HATS-12 b'])
+        print('\nHATS-12 b removes from test set\n')
+    except KeyError:
+        pass
+    try:
+        # Remove K2-95 b from the training set
+        X_train = X_train.drop(['K2-95 b'])
+        y_train = y_train.drop(labels=['K2-95 b'])
+        print('\nK2-95 b removes from training set\n')
+    except KeyError:
+        pass
+    try:
+        # Remove Kepler-11 g from the training set
+        X_train = X_train.drop(['Kepler-11 g'])
+        y_train = y_train.drop(labels=['Kepler-11 g'])
+        print('\nKepler-11 g removes from training set\n')
+    except KeyError:
+        pass
+        
 
     train_test_values = [X_train.values, X_test.values,
                          y_train.values, y_test.values]
