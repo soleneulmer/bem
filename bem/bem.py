@@ -44,7 +44,7 @@ else:
 saved_pickle_model = os.path.join(published_dir, 'r2_0.84_2019-07-23_17:05.pkl')
 
 
-def load_dataset(cat_exoplanet='exoplanet.eu_catalog_23March2023.csv',
+def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
                  cat_solar='solar_system_planets_catalog.csv',
                  feature_names=['mass', 'semi_major_axis',
                                 'eccentricity', 'star_metallicity',
