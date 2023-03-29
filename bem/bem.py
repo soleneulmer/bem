@@ -84,6 +84,12 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
     else:
         dataset_exo = dataset_exo[feature_names]
         dataset_solar_system = dataset_solar_system[feature_names]
+        
+    # Choose if you want to remove planets with NaN eccentricity or set it to 0
+    # True if you want to remove and False if you want to replace it by 0
+    rm_ecc = False
+    if not rm_ecc:
+        dataset_exo.fillna(value={'eccentricity': 0.}, inplace=True)
 
     # Removes the planets with NaN values
     dataset_exo = dataset_exo.dropna(axis=0, how='any')
@@ -129,6 +135,9 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
     print('Selecting features:')
     pprint(select_features)
     dataset = dataset[select_features]
+    
+    # Write dataset to a csv file for further use
+    dataset.to_csv('Filtered_dataset.csv')
 
     return dataset
 
