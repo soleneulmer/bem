@@ -1,14 +1,17 @@
 import pandas as pd
-from astropy.units import earthMass, jupiterMass, earthRad, jupiterRad, solMass, solRad, AU
+from astropy.units import jupiterMass, jupiterRad, AU
 from .teq_planet import getTeqpl, getTeqpl_error
 import numpy as np
 from uncertainties import ufloat
 
 
 def read_file_pandas(csv_file, radius=True):
-    """Read the CSV file with Pandas
-    in a dataset
-    with specific parameters"""
+    '''
+    Read the CSV file with Pandas in a dataset with specific parameters
+    :param csv_file:
+    :param radius:
+    :return:
+    '''
     dataset = pd.read_csv(csv_file)
     if radius is True:
         dataset = dataset[['mass', 'mass_error_max', 'semi_major_axis',
