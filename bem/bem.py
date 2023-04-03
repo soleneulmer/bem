@@ -34,17 +34,17 @@ __all__ = [
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))
-published_dir = os.path.join(here, '..', 'published_output')
-if os.path.exists(os.path.join(published_dir, 'r2_0.84_2019-07-23_17:05.pkl')):
+published_dir = os.path.join(here, '/home/antonin/Documents/1-Master/Laboratory/APLII/bem', 'published_output')
+if os.path.exists(os.path.join(published_dir, 'r2_0.86_2023-04-03_10:41.pkl')):
     pass
 else:
     published_dir = os.path.join(sys.prefix, 'published_output')
 
-saved_pickle_model = os.path.join(published_dir, 'r2_0.84_2019-07-23_17:05.pkl')
+saved_pickle_model = os.path.join(published_dir, 'r2_0.86_2023-04-03_10:41.pkl')
 
 
-def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
-                 cat_solar='solar_system_planets_catalog.csv',
+def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_29March2023.csv',
+                 cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
                  feature_names=['mass', 'semi_major_axis',
                                 'eccentricity', 'star_metallicity',
                                 'star_radius', 'star_teff',
@@ -68,7 +68,7 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
     # Importing exoplanet dataset
     cat_exoplanet = os.path.join(published_dir, cat_exoplanet)
     dataset_exo = pd.read_csv(cat_exoplanet, index_col=0)
-    
+
     # Removing the masses detected with Theoretical (Chen&Kipping 2017 MR relation) & TTV, Timing
     dataset_exo = dataset_exo[dataset_exo.mass_detection_type.isin(['Radial Velocity', np.nan, 'Astrometry', 'Spectrum'])]
 
@@ -86,7 +86,7 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
         dataset_exo = dataset_exo[feature_names]
         if solar:
             dataset_solar_system = dataset_solar_system[feature_names]
-        
+
     # Choose if you want to remove planets with NaN eccentricity or set it to 0
     # True if you want to remove and False if you want to replace it by 0
     rm_ecc = False
@@ -143,8 +143,8 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
     return dataset
 
 
-def load_dataset_errors(cat_exoplanet='exoplanet.eu_catalog_15April.csv',
-                        cat_solar='solar_system_planets_catalog.csv',
+def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_15April.csv',
+                        cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
                         solar=True):
     """Select exoplanet in the catalog
     which have uncertainty measurements
@@ -307,7 +307,7 @@ def load_dataset_errors(cat_exoplanet='exoplanet.eu_catalog_15April.csv',
     return dataset
 
 
-def load_dataset_RV(catalog_exoplanet='exoplanet.eu_catalog_15April.csv',
+def load_dataset_RV(catalog_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_15April.csv',
                     feature_names=['mass', 'mass_error_min', 'mass_error_max',
                                    'semi_major_axis',
                                    'eccentricity',
@@ -394,7 +394,7 @@ def load_dataset_RV(catalog_exoplanet='exoplanet.eu_catalog_15April.csv',
 
 def random_forest_regression(dataset,
                              model=saved_pickle_model,
-                             fit=True):
+                             fit=False):
 
     """Split the dataset into a training (75%) and testing set (25%)
     Removing 3 outliers planets from both sets
@@ -797,7 +797,7 @@ def plot_true_predicted(train_test_sets, radii_test_RF,
     return None
 
 
-def plot_learning_curve(regr, dataset, save=True, fit=True):
+def plot_learning_curve(regr, dataset, save=False, fit=False):
     """INPUTS: regr = random forest regression model
             dataset = pandas dataframe with features and labels
             save = bool, writes (True) or not (False) the scores
@@ -862,7 +862,7 @@ def plot_learning_curve(regr, dataset, save=True, fit=True):
 
 
 def plot_validation_curves(regr, dataset, name='features',
-                           save=True, fit=True):
+                           save=False, fit=False):
     """INPUTS: regr = random forest regression model
             dataset = pandas dataframe with features and labels
             name = str, can be 'features', 'tree', 'depth'
@@ -1057,14 +1057,15 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         return exp
 
     elif not planets:
-        planets.append(np.where(X_test.index == 'TRAPPIST-1 g')[0][0])
-        planets.append(np.where(X_test.index == 'HATS-35 b')[0][0])
-        planets.append(np.where(X_test.index == 'CoRoT-13 b')[0][0])
-        planets.append(np.where(X_test.index == 'Kepler-75 b')[0][0])
-        planets.append(np.where(X_test.index == 'WASP-17 b')[0][0])
-        planets.append(np.where(X_test.index == 'Kepler-20 c')[0][0])
-    else:
         pass
+        # planets.append(np.where(X_test.index == 'TRAPPIST-1 g')[0][0])
+        # planets.append(np.where(X_test.index == 'HATS-35 b')[0][0])
+        # planets.append(np.where(X_test.index == 'CoRoT-13 b')[0][0])
+        # planets.append(np.where(X_test.index == 'Kepler-75 b')[0][0])
+        # planets.append(np.where(X_test.index == 'WASP-17 b')[0][0])
+        # planets.append(np.where(X_test.index == 'Kepler-20 c')[0][0])
+    # else:
+    #     pass
 
     # Plotting
     fig, axs = plt.subplots(3, 2, constrained_layout=True, figsize=(15, 7.2712643025))
@@ -1126,7 +1127,7 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
                  mfc='none', ms=12,
                  label=X_test.iloc[planet].name)
         plt.legend()
-    return exp
+    # return exp
 
 def print_to_file(dataset, path_to_file, file_name):
     '''
@@ -1141,6 +1142,6 @@ def print_to_file(dataset, path_to_file, file_name):
     file_loc = path_to_file + file_name
     # store list in binary file so 'wb' mode
     print('Start writing list into a binary file')
-    with open(file_name, 'wb') as fp:
+    with open(file_loc, 'wb') as fp:
         pickle.dump(dataset, fp)
         print('Done writing list into a binary file')
