@@ -107,7 +107,7 @@ def load_dataset(cat_exoplanet='exoplanet.eu_catalog_29March2023.csv',
 
     # Add the Solar system planets with the Exoplanets
     if solar:
-        dataset = dataset_exo.append(dataset_solar_system)
+        dataset = pd.concat([dataset_exo,dataset_solar_system], axis=0)
     else:
         dataset = dataset_exo
     # Removes the planets with NaN values
@@ -267,7 +267,7 @@ def load_dataset_errors(cat_exoplanet='exoplanet.eu_catalog_15April.csv',
 
     # Add the Solar system planets with the Exoplanets
     if solar:
-        dataset = dataset_exo.append(dataset_solar_system)
+        dataset = pd.concat([dataset_exo,dataset_solar_system], axis=0)
     else:
         dataset = dataset_exo
 
@@ -429,10 +429,10 @@ def random_forest_regression(dataset,
                                                                         test_size=0.25,
                                                                         random_state=0)
 
-    X_train = X_train.append(X_train_sol)
-    y_train = y_train.append(y_train_sol)
-    X_test = X_test.append(X_test_sol)
-    y_test = y_test.append(y_test_sol)
+    X_train = pd.concat([X_train, X_train_sol], axis=0)
+    y_train = pd.concat([y_train, y_train_sol], axis=0)
+    X_test = pd.concat([X_test, X_test_sol], axis=0)
+    y_test = pd.concat([y_test, y_test_sol], axis=0)
 
 
     try:
