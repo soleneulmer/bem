@@ -27,13 +27,15 @@ def read_file_pandas(csv_file, radius=True):
 
 
 def get_semi_amplitude_k(ecc, m_star, m_p, a, inc):
-    """Compute the velocity semi amplitude K
-    ecc    : eccentricity
-    m_star : star mass(solar mass)
-    m_p    : planet mass(jupiter mass)
-    a      : semi major axis
-    inc    : inclination
-    Return k in m.s-1"""
+    '''
+    Compute the velocity semi amplitude K
+    :param ecc: eccentricity
+    :param m_star: star mass(solar mass)
+    :param m_p: planet mass(jupiter mass)
+    :param a: semi major axis
+    :param inc: inclination
+    :return: k in m.s-1
+    '''
     # -------------------------------------------------------
     sqrt_g = 28.4329  # m.s-1
     m_p_solar = m_p * jupiterMass.to('solMass')
