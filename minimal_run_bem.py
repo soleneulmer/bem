@@ -8,7 +8,7 @@ bem.print_to_file(dataset, 'published_output', 'filtered_dataset.pkl')
 # Plot the dataset radius as a function of mass and equilibrium temperature
 bem.plot_dataset(dataset)
 # Build the random forest model and predict radius of the dataset
-regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset)
+regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset, fit=True)
 
 # Load exoplanet and solar system planets dataset with uncertainties
 dataset_errors = bem.load_dataset_errors()

@@ -43,7 +43,7 @@ else:
 saved_pickle_model = os.path.join(published_dir, 'r2_0.86_2023-04-03_10:41.pkl')
 
 
-def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_29March2023.csv',
+def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
                  cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
                  feature_names=['mass', 'semi_major_axis',
                                 'eccentricity', 'star_metallicity',
@@ -113,7 +113,10 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
     else:
         dataset = dataset_exo
     # Removes the planets with NaN values
-    dataset = dataset.dropna(axis=0, how='any')
+    dataset.dropna(axis=0, how='any', inplace=True)
+
+    # Removes outliers
+    dataset = fd.rm_outliers(dataset, outliers_pkl='bem_output/outliers.pkl')
 
     # Add observables
     print('Computing planet\'s equilibrium temperature')
@@ -143,7 +146,7 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
     return dataset
 
 
-def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_15April.csv',
+def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
                         cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
                         solar=True):
     """Select exoplanet in the catalog
@@ -307,7 +310,7 @@ def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laborato
     return dataset
 
 
-def load_dataset_RV(catalog_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_15April.csv',
+def load_dataset_RV(catalog_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
                     feature_names=['mass', 'mass_error_min', 'mass_error_max',
                                    'semi_major_axis',
                                    'eccentricity',
@@ -1145,3 +1148,10 @@ def print_to_file(dataset, path_to_file, file_name):
     with open(file_loc, 'wb') as fp:
         pickle.dump(dataset, fp)
         print('Done writing list into a binary file')
+
+#Read list to memory
+def read_list(file_name):
+    # for reading also binary mode is important
+    with open(file_name, 'rb') as fp:
+        n_list = pickle.load(fp)
+        return n_list

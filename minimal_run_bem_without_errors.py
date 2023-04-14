@@ -8,7 +8,7 @@ bem.print_to_file(dataset, 'published_output', 'filtered_dataset.pkl')
 # Plot the dataset radius as a function of mass and equilibrium temperature
 bem.plot_dataset(dataset)
 # Build the random forest model and predict radius of the dataset
-regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset)
+regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset, fit=True)
 
 # # Load exoplanet and solar system planets dataset with uncertainties
 # dataset_errors = load_dataset_errors()
@@ -34,11 +34,11 @@ bem.plot_dataset(dataset_rv, predicted_radii=radii_RV_RF, rv=True)
 
 
 # Plot the learning curve
-bem.plot_learning_curve(regr, dataset)
+bem.plot_learning_curve(regr, dataset, save=True, fit=True)
 # Plot the validation curves
-bem.plot_validation_curves(regr, dataset, name='features')
-bem.plot_validation_curves(regr, dataset, name='tree')
-bem.plot_validation_curves(regr, dataset, name='depth')
+bem.plot_validation_curves(regr, dataset, name='features', save=True, fit=True)
+bem.plot_validation_curves(regr, dataset, name='tree', save=True, fit=True)
+bem.plot_validation_curves(regr, dataset, name='depth', save=True, fit=True)
 
 # Explain the RF predictions
 exp = bem.plot_LIME_predictions(regr, dataset, train_test_sets)
