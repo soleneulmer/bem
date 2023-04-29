@@ -68,8 +68,10 @@ def add_temp_eq_dataset(dataset):
 
 
 def add_temp_eq_error_dataset(dataset):
+
     semi_major_axis = dataset.semi_major_axis * AU.to('solRad')
     semi_major_axis_error = dataset.semi_major_axis_error * AU.to('solRad')
+
     teq_planet = [getTeqpl_error(ufloat(teff, abs(teff_e)),
                                  ufloat(a, abs(a_e)) / ufloat(rad, abs(rad_e)),
                                  ufloat(ecc, abs(ecc_e)))

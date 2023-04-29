@@ -35,20 +35,21 @@ __all__ = [
 
 here = os.path.abspath(os.path.dirname(__file__))
 published_dir = os.path.join(here, '/home/antonin/Documents/1-Master/Laboratory/APLII/bem', 'published_output')
-if os.path.exists(os.path.join(published_dir, 'r2_0.86_2023-04-03_10:41.pkl')):
+if os.path.exists(os.path.join(published_dir, 'r2_0.89_2023-04-17_14:32.pkl')):
     pass
 else:
     published_dir = os.path.join(sys.prefix, 'published_output')
 
-saved_pickle_model = os.path.join(published_dir, 'r2_0.86_2023-04-03_10:41.pkl')
+saved_pickle_model = os.path.join(published_dir, 'r2_0.89_2023-04-17_14:32.pkl')
 
 
 def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
                  cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
-                 feature_names=['mass', 'semi_major_axis',
+                 feature_names=['mass', 'semi_major_axis', 'orbital_period',
                                 'eccentricity', 'star_metallicity',
                                 'star_radius', 'star_teff',
-                                'star_mass', 'radius'],
+                                'star_mass', 'radius', 'star_age'],
+                 rm_ecc=False,
                  solar=True):
     '''
     Select exoplanet in the catalog which have mass and radius measurements
@@ -89,7 +90,7 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
 
     # Choose if you want to remove planets with NaN eccentricity or set it to 0
     # True if you want to remove and False if you want to replace it by 0
-    rm_ecc = False
+
     if not rm_ecc:
         dataset_exo.fillna(value={'eccentricity': 0.}, inplace=True)
 
@@ -123,17 +124,27 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
     dataset = fd.add_temp_eq_dataset(dataset)
     print('Computing stellar luminosity')
     dataset = fd.add_star_luminosity_dataset(dataset)
-
+    print('Computing insolation')
+    dataset = fd.add_insolation_dataset(dataset)
     # Number of planets in dataset
     print('\nNumber of planets: ', len(dataset))
     print('\n', dataset.head())
 
     # Returning the dataset with selected features
+    # select_features = ['mass',
+    #                    'semi_major_axis',
+    #                    'temp_eq',
+    #                    'star_luminosity',
+    #                    'star_radius', 'star_teff',
+    #                    'star_mass',
+    #                    'radius']
+
     select_features = ['mass',
+                       'orbital_period',
                        'semi_major_axis',
                        'temp_eq',
-                       'star_luminosity',
-                       'star_radius', 'star_teff',
+                       'insolation',
+                       'star_radius',  'star_age',
                        'star_mass',
                        'radius']
 
@@ -141,7 +152,7 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
     pprint(select_features)
     dataset = dataset[select_features]
     # Convert some columns to float (because they are objects for some reason)
-    # dataset['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
+    dataset['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
 
     return dataset
 
@@ -149,20 +160,18 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
 def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
                         cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
                         solar=True):
-    """Select exoplanet in the catalog
-    which have uncertainty measurements
-    as well as stellar parameters
-    If there is no uncertainty measurement, the uncertainty is set to
-    the 0.9 quantile of the distribution of uncertainties
-    This dataset will be used to compute error bars for the test set
+    '''
+    Select exoplanet in the catalog which have uncertainty measurements as well as stellar parameters.
+    If there is no uncertainty measurement, the uncertainty is set to the 0.9 quantile of the distribution of uncertainties.
+    This dataset will be used to compute error bars for the test set.
 
-    INPUTS: catalog_exoplanet = CSV file from exoplanet.eu
-            catalog_solar = CSV file from Planetary sheet
-            features = list of features to select in the dataset
-    OUPUTS: dataset_exo = pandas struct with exoplanets
+    :param cat_exoplanet: CSV file from exoplanet.eu
+    :param cat_solar: CSV file from Planetary sheet
+    :param solar: list of features to select in the dataset
+    :return: pandas struct with exoplanets
                           with mass & radius measurements
-                          the mass/radius are in Earth massses/radii"""
-
+                          the mass/radius are in Earth massses/radii
+    '''
 
     print('\nLoading exoplanet dataset and solar system planets:')
 
@@ -312,21 +321,20 @@ def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laborato
 
 def load_dataset_RV(catalog_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
                     feature_names=['mass', 'mass_error_min', 'mass_error_max',
-                                   'semi_major_axis',
+                                   'semi_major_axis', 'orbital_period',
                                    'eccentricity',
                                    'star_metallicity',
-                                   'star_radius',
+                                   'star_radius', 'star_age',
                                    'star_teff', 'star_mass']):
-    """Select exoplanet in the catalog which are detected by RV
-    and do not have mass measurement.
+    '''
+    Select exoplanet in the catalog which are detected by RV and do not have mass measurement.
     This dataset will be used to later predict their masses
 
-    INPUTS: catalog_exoplanet = CSV file from exoplanet.eu
-            features = list of features to select in the dataset
-    OUPUTS: dataset_radial = pandas struct with exoplanets
-                             detected by RV without radius measurements
-                             the mass is in Earth masses"""
-
+    :param catalog_exoplanet: CSV file from exoplanet.eu
+    :param feature_names: list of features to select in the dataset
+    :return: dataset_radial: pandas struct with exoplanets detected by RV without radius measurements.
+                             the mass is in Earth masses
+    '''
 
     print('\nLoading exoplanet dataset found with RVs:')
     catalog_exoplanet = os.path.join(published_dir, catalog_exoplanet)
@@ -346,11 +354,13 @@ def load_dataset_RV(catalog_exoplanet='/home/antonin/Documents/1-Master/Laborato
         pprint(feature_names)
         dataset_radial = dataset_radial[feature_names]
         # Excluding exoplanets with missing data
-        dataset_radial = dataset_radial.dropna(subset=['mass', 'semi_major_axis',
-                                                       'eccentricity',
-                                                       'star_metallicity',
-                                                       'star_radius', 'star_teff',
-                                                       'star_mass'])
+        # dataset_radial = dataset_radial.dropna(subset=['mass', 'semi_major_axis',
+        #                                                'eccentricity',
+        #                                                'star_metallicity',
+        #                                                'star_radius', 'star_teff',
+        #                                                'star_mass'])
+
+        dataset_radial = dataset_radial.dropna(axis=0, how='any', inplace=False)
 
     # Replace inf by NaN
     dataset_radial = dataset_radial.replace([np.inf, -np.inf], np.nan)
@@ -381,15 +391,21 @@ def load_dataset_RV(catalog_exoplanet='/home/antonin/Documents/1-Master/Laborato
     dataset_radial = fd.add_temp_eq_dataset(dataset_radial)
     print('Computing stellar luminosity')
     dataset_radial = fd.add_star_luminosity_dataset(dataset_radial)
+    print('Computing insolation')
+    dataset_radial = fd.add_insolation_dataset(dataset_radial)
 
     print('\nNumber of planets: ', len(dataset_radial))
 
+    # Convert some columns to float (because they are objects for some reason)
+    dataset_radial['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
+
     # Remove the mass error column for Random forest
     dataset_radial = dataset_radial[['mass',
+                                     'orbital_period',
                                      'semi_major_axis',
                                      'temp_eq',
-                                     'star_luminosity',
-                                     'star_radius', 'star_teff',
+                                     'insolation',
+                                     'star_radius', 'star_age',
                                      'star_mass']]
 
     return dataset_radial
@@ -398,25 +414,22 @@ def load_dataset_RV(catalog_exoplanet='/home/antonin/Documents/1-Master/Laborato
 def random_forest_regression(dataset,
                              model=saved_pickle_model,
                              fit=False):
-
-    """Split the dataset into a training (75%) and testing set (25%)
+    '''
+    Split the dataset into a training (75%) and testing set (25%)
     Removing 3 outliers planets from both sets
 
     If fit is True:
     Fitting the hyperparameters of the random forest regression
     otherwise loading a already fitted model
 
-
-    INPUTS: dataset = pandas dataframe with all the exoplanets
-                      and their planetary and stellar parameters as features
-            model = random forest model with best fit hyperparameters
-            fit = boolean, to do the fitting (True) or not (False)
-    OUPUTS: regr = the random forest regression model
+    :param dataset: pandas dataframe with all the exoplanets and their planetary and stellar parameters as features
+    :param model: random forest model with best fit hyperparameters
+    :param fit: boolean, to do the fitting (True) or not (False)
+    :return: regr: the random forest regression model
             y_test_predict = radius predictions of the test set
             train_test_values = arrays with the values of the train and test sets
-            train_test_sets = pandas dataframes with exoplanets and features names
-                              as well as the values"""
-
+            train_test_sets = pandas dataframes with exoplanets and features names as well as the values
+    '''
 
     # Preparing the training and test sets
     # ------------------------------------
@@ -546,19 +559,14 @@ def random_forest_regression(dataset,
 
 
 def computing_errorbars(regr, dataset_errors, train_test_sets):
-    """INPUTS: regr = random forest regression model
-            dataset_errors = pandas dataframe with each feature
-                             and their associated uncertainties
-            train_test_sets = pandas dataframes with exoplanets
-                              and features names
-                              as well as the values
+    '''
 
-    OUTPUTS: radii_test_output_error = error on the predicted
-                                       radius for the Test set
-             radii_test_input_error = original uncertainty
-                                      on the radius measurements"""
-
-
+    :param regr: random forest regression model
+    :param dataset_errors: pandas dataframe with each feature and their associated uncertainties
+    :param train_test_sets: pandas dataframes with exoplanets and features names as well as the values
+    :return: radii_test_output_error: error on the predicted radius for the Test set
+             radii_test_input_error: original uncertainty on the radius measurements
+    '''
 
     # Original train and test sets
     X_train, X_test, y_train, y_test = train_test_sets
@@ -607,44 +615,82 @@ def computing_errorbars(regr, dataset_errors, train_test_sets):
     return radii_test_output_error, radii_test_input_error
 
 
-def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
-                   my_name=np.array(['My planet b']),
+def predict_radius( my_name=np.array(['My planet b']),
+                    my_param_name=['mass',
+                                    'semi major axis',
+                                    'eccentricity',
+                                    'star_radius',
+                                    'star_teff',
+                                    'star_mass'],
+                    my_param=np.array([[1,
+                                        1,
+                                        0,
+                                        1,
+                                        5777,
+                                        1]]),
                    regr=None,
                    jupiter_mass=False,
                    error_bar=False):
-    """Predict radius of a planet
-    given the planetary mass, semi major axis, eccentricity,
-    stellar radius, star effective temperature, and stellar mass
+    '''
 
-    INPUTS: my_planet = array with a shape (1,6)
-                        np.array([[planetary mass,
-                                   semi major axis,
-                                   eccentricity,
-                                   star_radius,
-                                   star_teff,
-                                   star_mass]])
-            my_name = array with a shape (1,)
-                      np.array(['my planet b'])
-            regr = random forest regression model
-            jupiter_mass = bool, True is the planet's mass is given in Jupiter mass
-            error_bar = bool, True if an error is provided for each parameter
-                        such as
-                        my_planet = np.array([[planetary mass, planetary mass error,
-                                   semi major axis, semi major axis error,
-                                   eccentricity, eccentricity error,
-                                   star_radius, star_radius error,
-                                   star_teff, star_teff error,
-                                   star_mass, star_mass error]])
+    :param my_name: string array with a shape (1,) containing the name of the planet one wants to predict the radius of.
+                        Example: np.array(['my planet b'])
 
-    OUTPUTS: radius = planet's radius predicting with the RF model
-             my_pred_planet = pandas dataframe with the input features
-                              used by the random forest model
-                              Can be used as input in plot_LIME_predictions()
-                              The features are now:
-                              'mass', 'semi_major_axis',
-                              'temp_eq', 'star_luminosity',
-                              'star_radius', 'star_teff',
-                              'star_mass'"""
+    :param my_param_name: String array containing the name of the parameters one wants to use
+
+        If no error_bar:
+                String array with a shape (1,#parameters)
+                    Example: np.array([[
+                                        planetary mass,
+                                        semi major axis,
+                                        eccentricity,
+                                        star_radius,
+                                        star_teff,
+                                        star_mass
+                                ]])
+
+        If error_bar:
+            String array with a shape (1,2 * #parameters)
+            Where 2 * #parameters = #parameters + #errors
+            It is compulsory to give the parameters the following way:
+            [param1, param1 error, param2, param2 error, ...]
+                Example: np.array([[
+                                    planetary mass, planetary mass error,
+                                    semi major axis, semi major axis error,
+                                    eccentricity, eccentricity error,
+                                    star_radius, star_radius error,
+                                    star_teff, star_teff error,
+                                    star_mass, star_mass error
+                                ]])
+
+    :param my_param: Same as my_param_name but with the corresponding values
+
+    :param regr: random forest regression model
+
+    :param jupiter_mass: bool, True is the planet's mass is given in Jupiter mass
+
+    :param error_bar: bool, True if an error is provided for EVERY parameter
+
+                        Example: my_param = np.array([[
+                                                planetary mass, planetary mass error,
+                                                semi major axis, semi major axis error,
+                                                eccentricity, eccentricity error,
+                                                star_radius, star_radius error,
+                                                star_teff, star_teff error,
+                                                star_mass, star_mass error
+                                            ]])
+
+
+    :return: radius: planet's radius predicting with the RF model
+
+             my_pred_planet: pandas dataframe with the input features used by the random forest model
+                             Can be used as input in plot_LIME_predictions()
+                                Example: The features are now:
+                                          'mass', 'semi_major_axis',
+                                          'temp_eq', 'star_luminosity',
+                                          'star_radius', 'star_teff',
+                                          'star_mass
+    '''
 
     if regr is None:
         # Loading the random forest model saved
@@ -655,49 +701,40 @@ def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
 
     if error_bar:
         print('\nPredicting radius for planet:\n')
-        my_planet = pd.DataFrame(data=my_planet,
+        my_param = pd.DataFrame(data=my_param,
                                  index=my_name,
-                                 columns=np.array(['mass', 'mass_error',
-                                                   'semi_major_axis', 'semi_major_axis_error',
-                                                   'eccentricity', 'eccentricity_error', 
-                                                   'star_radius', 'star_radius_error',
-                                                   'star_teff', 'star_teff_error',
-                                                   'star_mass', 'star_mass_error']))
+                                 columns=np.array(my_param_name))
         # Changing mass units to Earth mass
         if jupiter_mass:
-            my_planet = fd.jupiter_to_earth_mass(my_planet, 'mass')
-            my_planet = fd.jupiter_to_earth_mass(my_planet, 'mass_error')
+            my_param = fd.jupiter_to_earth_mass(my_param, 'mass')
+            my_param = fd.jupiter_to_earth_mass(my_param, 'mass_error')
         else:
             print('Planetary mass is given in Earth mass')
 
         # Computing equilibrium temperature
-        my_planet = fd.add_temp_eq_error_dataset(my_planet)
+        my_param = fd.add_temp_eq_error_dataset(my_param)
         # Computing stellar luminosity
-        my_planet = fd.add_star_luminosity_error_dataset(my_planet)
+        my_param = fd.add_star_luminosity_error_dataset(my_param)
+        # Computing insolation
+        my_param = fd.add_insolation_dataset(my_param)
 
         # Planet with error bars
-        print('Planet with error bars\n', my_planet.iloc[0])
+        print('Planet with error bars\n', my_param.iloc[0])
 
         # Radius error prediction
-        my_pred_planet = my_planet[['mass', 'mass_error',
-                                    'semi_major_axis', 'semi_major_axis_error',
-                                    'temp_eq', 'temp_eq_error',
-                                    'star_luminosity', 'star_luminosity_error',
-                                    'star_radius', 'star_radius_error',
-                                    'star_teff', 'star_teff_error',
-                                    'star_mass', 'star_mass_error']]
+        my_pred_planet = my_param[my_param_name]
 
         # Feature / feature error
+        print('my_pred_planet:', np.shape(my_pred_planet), my_pred_planet )
         features_with_errors = my_pred_planet.iloc[0].values.reshape(1, -1)
+        print('features_with_errors:', np.shape(features_with_errors), features_with_errors)
+        print('features_with_errors[0, ::2]', np.shape(features_with_errors[0, ::2]), features_with_errors[0, ::2])
         radius_error = regr.predict(mvn(features_with_errors[0, ::2],
                                         np.diag(features_with_errors[0, 1::2]),
                                         allow_singular=True).rvs(1000)).std()
 
         # Radius prediction
-        my_pred_planet = my_planet[['mass', 'semi_major_axis',
-                                    'temp_eq', 'star_luminosity',
-                                    'star_radius', 'star_teff',
-                                    'star_mass']]
+        my_pred_planet = my_param[my_param_name[::2]]
         radius = regr.predict(my_pred_planet.iloc[0].values.reshape(1, -1))
 
         # Print
@@ -706,27 +743,21 @@ def predict_radius(my_planet=np.array([[1, 1, 0, 1, 5777, 1]]),
 
     else:
         print('\nPredicting radius for planet:\n')
-        my_planet = pd.DataFrame(data=my_planet,
+        my_param = pd.DataFrame(data=my_param,
                                  index=my_name,
-                                 columns=np.array(['mass', 'semi_major_axis',
-                                                   'eccentricity',
-                                                   'star_radius',
-                                                   'star_teff', 'star_mass']))
+                                 columns=np.array(my_param_name))
         # Changing mass units to Earth mass
         if jupiter_mass:
-            my_planet = fd.jupiter_to_earth_mass(my_planet, 'mass')
+            my_param = fd.jupiter_to_earth_mass(my_param, 'mass')
         else:
             print('Planetary mass is given in Earth mass')
 
         # Computing equilibrium temperature
-        my_planet = fd.add_temp_eq_dataset(my_planet)
+        my_param = fd.add_temp_eq_dataset(my_param)
         # Computing stellar luminosity
-        my_planet = fd.add_star_luminosity_dataset(my_planet)
+        my_param = fd.add_star_luminosity_dataset(my_param)
         # Select features
-        my_pred_planet = my_planet[['mass', 'semi_major_axis',
-                                    'temp_eq', 'star_luminosity',
-                                    'star_radius', 'star_teff',
-                                    'star_mass']]
+        my_pred_planet = my_param[my_param_name]
         # Radius prediction
         print(my_pred_planet.iloc[0])
         radius = regr.predict(my_pred_planet.iloc[0].values.reshape(1, -1))
@@ -801,16 +832,16 @@ def plot_true_predicted(train_test_sets, radii_test_RF,
 
 
 def plot_learning_curve(regr, dataset, save=False, fit=False):
-    """INPUTS: regr = random forest regression model
-            dataset = pandas dataframe with features and labels
-            save = bool, writes (True) or not (False) the scores
-            fit = bool, computes the score if True
+    '''
+    Cross validation with 100 iterations to get smoother mean test and train score curves,
+    each time with 20% data randomly selected as a validation set.
 
-    OUTPUTS: Written files
-
-    Cross validation with 100 iterations
-    to get smoother mean test and train score curves,
-    each time with 20% data randomly selected as a validation set."""
+    :param regr: random forest regression model
+    :param dataset: pandas dataframe with features and labels
+    :param save: bool, writes (True) or not (False) the scores
+    :param fit: bool, computes the score if True
+    :return: Written files
+    '''
 
     features = dataset.iloc[:, :-1].values   # mass, teq, etc
     labels = dataset.iloc[:, -1].values      # radius
@@ -866,13 +897,16 @@ def plot_learning_curve(regr, dataset, save=False, fit=False):
 
 def plot_validation_curves(regr, dataset, name='features',
                            save=False, fit=False):
-    """INPUTS: regr = random forest regression model
-            dataset = pandas dataframe with features and labels
-            name = str, can be 'features', 'tree', 'depth'
-            save = bool, writes (True) or not (False) the scores
-            fit = bool, computes the score if True
+    '''
 
-    OUTPUTS: Written files"""
+    :param regr: random forest regression model
+    :param dataset: pandas dataframe with features and labels
+    :param name: str, can be 'features', 'tree', 'depth'
+    :param save: bool, writes (True) or not (False) the scores
+    :param fit: bool, computes the score if True
+
+    :return: Written files
+    '''
 
     features = dataset.iloc[:, :-1].values   # mass, teq, etc
     labels = dataset.iloc[:, -1].values      # radius
@@ -966,33 +1000,35 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
                           my_true_radius=None,
                           feature_name=['mass',
                                         'semi_major_axis',
+                                        'orbital_period',
                                         'temp_eq',
                                         'star_luminosity',
-                                        'star_radius', 'star_teff',
+                                        'insolation',
+                                        'star_age',
+                                        'star_radius',
+                                        'star_teff',
                                         'star_mass',
                                         'radius']):
-    """
+    '''
     Compute and plot the LIME explanation for one or several radius predictions
     made by the random forest model
-    INPUTS: REGR = the random forest model
-            DATASET = the input dataset from which the RF is built
-            TRAIN_TEST_SET = the training and test sets
 
-            PLANETS = list of indexes of the planets in the Test set,
+    :param regr: the random forest model
+    :param dataset: the input dataset from which the RF is built
+    :param train_test_sets: the training and test sets
+    :param planets: list of indexes of the planets in the Test set,
                       for which we want an LIME explanation
                       Contains maximum 6 numbers
-    or
-            MY_PRED_PLANET = pandas dataset with the input features
+    :param my_pred_planet: pandas dataset with the input features
                         used by the random forest model
                         > mass, semi_major_axis, temp_eq, star_luminosity,
                           star_radius, star_teff, star_mass
             The my_pred_planet output of predict_radius() can be used as
             my_pred_planet input for this function
-
-            FEATURE_NAME = list of input features used by the random forest
-
-    OUTPUTS: EXP = LIME explainer, contains the LIME radius prediction
-    """
+    :param my_true_radius:
+    :param feature_name: list of input features used by the random forest
+    :return: exp: LIME explainer, contains the LIME radius prediction
+    '''
 
     # Data
     X_train, X_test, y_train, y_test = train_test_sets
