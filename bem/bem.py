@@ -43,35 +43,53 @@ else:
 saved_pickle_model = os.path.join(published_dir, 'r2_0.89_2023-04-17_14:32.pkl')
 
 
-def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
-                 cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
-                 feature_names=['mass', 'semi_major_axis', 'orbital_period',
-                                'eccentricity', 'star_metallicity',
-                                'star_radius', 'star_teff',
-                                'star_mass', 'radius', 'star_age'],
-                 rm_ecc=False,
-                 solar=True):
+def load_dataset(
+        cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
+        cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
+        feature_names_input=None,
+        feature_names_output=None,
+        solar=True,
+        rm_ecc=False,
+        rm_outliers=True
+):
     '''
     Select exoplanet in the catalog which have mass and radius measurements
     as well as desired stellar parameters
     This dataset will be used to train and test the Random Forest
     :param cat_exoplanet: CSV file from exoplanet.eu
     :param cat_solar: CSV file from Planetary sheet
-    :param feature_names:  list of features to select in the dataset
-    :param solar:  if True add solar system planets to dataset, if False don't
-    :return: Pandas struct with exoplanets
-                          with mass & radius measurements
-                          the mass/radius are in Earth massses/radii
+    :param feature_names_input:  list of features to select in the dataset
+    :param feature_names_output: list of features to return in the dataset
+    :param rm_outliers: if True: remove outliers planets. if False: don't.
+                        Requires to have a pandas df containing the outliers saved in a pickle file
+                        Or a list containing the outliers
+                        cf. 'rm_outliers' in 'format_dataset.py' for more informations
+    :param rm_ecc: if True: remove the planets with 'eccentricity' = NaN. if False: set it to 0.0 if NaN
+    :param solar: if True: add solar system planets to dataset. if False: don't
+    :return: Pandas struct with columns=feature_names_output of exoplanets.
+                          Exoplanets have mass & radius measurements
+                          the masses/radii are in Earth mass/radius
     '''
 
+    if feature_names_input is None:
+        feature_names_input = ['mass', 'radius', 'semi_major_axis', 'orbital_period', 'eccentricity',
+                               'star_mass', 'star_radius', 'star_teff', 'star_age', 'star_metallicity']
+    if feature_names_output is None:
+        feature_names_output = ['mass', 'radius', 'semi_major_axis', 'orbital_period', 'temp_eq', 'insolation',
+                                'star_mass', 'star_radius', 'star_age']
 
+    print('\n #----- Start load_dataset -----#')
     print('\nLoading exoplanet dataset and solar system planets:')
     # Importing exoplanet dataset
     cat_exoplanet = os.path.join(published_dir, cat_exoplanet)
     dataset_exo = pd.read_csv(cat_exoplanet, index_col=0)
-
+    # adding the number of planets per system to the dataset
+    print('Adding the number of planets in every system to the dataset')
+    dataset_exo = fd.add_n_planets_syst_dataset(dataset_exo)
     # Removing the masses detected with Theoretical (Chen&Kipping 2017 MR relation) & TTV, Timing
-    dataset_exo = dataset_exo[dataset_exo.mass_detection_type.isin(['Radial Velocity', np.nan, 'Astrometry', 'Spectrum'])]
+    print('Removing the planets whose masses where detected with Theoretical, TTV or Timing')
+    dataset_exo = dataset_exo[
+        dataset_exo.mass_detection_type.isin(['Radial Velocity', np.nan, 'Astrometry', 'Spectrum'])]
 
     if solar:
         # Importing Solar system dataset
@@ -80,20 +98,23 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
         dataset_solar_system = pd.read_csv(cat_solar, index_col=0)
 
     # Choosing features/data
-    if not feature_names:
+    if not feature_names_input:
         print('No features selected, loading all features')
         pass
     else:
-        dataset_exo = dataset_exo[feature_names]
+        print('Following features selected, loading them:')
+        print(feature_names_input)
+        dataset_exo = dataset_exo[feature_names_input]
         if solar:
-            dataset_solar_system = dataset_solar_system[feature_names]
+            dataset_solar_system = dataset_solar_system[feature_names_input]
 
     # Choose if you want to remove planets with NaN eccentricity or set it to 0
     # True if you want to remove and False if you want to replace it by 0
-
     if not rm_ecc:
+        print('Setting the eccentricity to 0.0 if NaN:')
         dataset_exo.fillna(value={'eccentricity': 0.}, inplace=True)
-
+    else:
+        print('Removing planets for which the eccentricity is NaN:')
     # Removes the planets with NaN values
     dataset_exo = dataset_exo.dropna(axis=0, how='any')
 
@@ -110,6 +131,7 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
 
     # Add the Solar system planets with the Exoplanets
     if solar:
+        print('Adding the Solar system planets with the Exoplanets dataset')
         dataset = pd.concat([dataset_exo, dataset_solar_system], axis=0)
     else:
         dataset = dataset_exo
@@ -117,7 +139,14 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
     dataset.dropna(axis=0, how='any', inplace=True)
 
     # Removes outliers
-    dataset = fd.rm_outliers(dataset, outliers_pkl='bem_output/outliers.pkl')
+    # Set it to None to first obtain dataset with wanted parameters.
+    # Then go to notebook 'Find Outliers.ipynb', load the dataset and run/modify to find the outliers
+    # The notebook will save the outliers to the file 'outliers.pkl' that can be now used by rerunning the script with rm_outliers=True
+    if rm_outliers:
+        print('Removing outliers')
+        dataset = fd.rm_outliers(dataset, outliers_pkl='bem_output/outliers.pkl')
+    else:
+        print('Not removing outliers')
 
     # Add observables
     print('Computing planet\'s equilibrium temperature')
@@ -126,40 +155,32 @@ def load_dataset(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLI
     dataset = fd.add_star_luminosity_dataset(dataset)
     print('Computing insolation')
     dataset = fd.add_insolation_dataset(dataset)
-    # Number of planets in dataset
-    print('\nNumber of planets: ', len(dataset))
-    print('\n', dataset.head())
 
     # Returning the dataset with selected features
-    # select_features = ['mass',
-    #                    'semi_major_axis',
-    #                    'temp_eq',
-    #                    'star_luminosity',
-    #                    'star_radius', 'star_teff',
-    #                    'star_mass',
-    #                    'radius']
+    print('Selected features for the dataset:')
+    print(feature_names_output)
+    # Number of planets in dataset
+    print('\nNumber of planets in the dataset: ', len(dataset))
+    print('\n', dataset.head())
 
-    select_features = ['mass',
-                       'orbital_period',
-                       'semi_major_axis',
-                       'temp_eq',
-                       'insolation',
-                       'star_radius',  'star_age',
-                       'star_mass',
-                       'radius']
-
-    print('Selecting features:')
-    pprint(select_features)
-    dataset = dataset[select_features]
+    dataset = dataset[feature_names_output]
     # Convert some columns to float (because they are objects for some reason)
     dataset['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
+
+    print('Writing dataset to a pickle file')
+    write_list(dataset, 'published_output/', 'filtered_dataset.pkl')
+    print('\n #----- End load_dataset -----#')
 
     return dataset
 
 
-def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
-                        cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
-                        solar=True):
+def load_dataset_errors(
+        cat_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
+        cat_solar='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/solar_system_planets_catalog.csv',
+        features_input=None,
+        features_ss_input=None,
+        features_output=None,
+        solar=True):
     '''
     Select exoplanet in the catalog which have uncertainty measurements as well as stellar parameters.
     If there is no uncertainty measurement, the uncertainty is set to the 0.9 quantile of the distribution of uncertainties.
@@ -167,69 +188,81 @@ def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laborato
 
     :param cat_exoplanet: CSV file from exoplanet.eu
     :param cat_solar: CSV file from Planetary sheet
+    :param features_input: input features of the exoplanets dataframe
+                            Needs to be formatted the following way:
+                            ['param', 'param_error_min', 'param_error_max', ...]
+                            Otherwise dataset_exo = dataset_exo.dropna(subset=features_input[::3]) will not work
+    :param features_ss_input: input features of the solar system dataframe
+                             Needs to be formatted the following way:
+                             ['param', 'param_error', ...]
+                             Otherwise dataset_solar_system = dataset_solar_system.dropna(subset=features_ss_input[::2]) will not work
+    :param features_output: output parameters
+                            Needs to be formatted the following way:
+                            ['param', 'param_error', ...]
     :param solar: list of features to select in the dataset
+
     :return: pandas struct with exoplanets
                           with mass & radius measurements
                           the mass/radius are in Earth massses/radii
     '''
+
+    if features_output is None:
+        features_output = ['mass', 'mass_error',
+                           'star_luminosity', 'star_luminosity_error',
+                           'temp_eq', 'temp_eq_error',
+                           'semi_major_axis', 'semi_major_axis_error',
+                           'star_mass', 'star_mass_error',
+                           'star_radius', 'star_radius_error',
+                           'star_teff', 'star_teff_error',
+                           'radius', 'radius_error']
+    if features_ss_input is None:
+        features_ss_input = ['mass', 'mass_error',
+                             'semi_major_axis',
+                             'semi_major_axis_error',
+                             'eccentricity',
+                             'eccentricity_error',
+                             'star_mass',
+                             'star_mass_error',
+                             'star_radius',
+                             'star_radius_error',
+                             'star_teff',
+                             'star_teff_error',
+                             'radius', 'radius_error']
+    if features_input is None:
+        features_input = ['mass', 'mass_error_min', 'mass_error_max',
+                          'radius', 'radius_error_min', 'radius_error_max',
+                          'semi_major_axis', 'semi_major_axis_error_min',
+                          'semi_major_axis_error_max',
+                          'eccentricity', 'eccentricity_error_min',
+                          'eccentricity_error_max',
+                          'star_mass',
+                          'star_mass_error_min', 'star_mass_error_max',
+                          'star_radius', 'star_radius_error_min',
+                          'star_radius_error_max',
+                          'star_teff',
+                          'star_teff_error_min', 'star_teff_error_max']
 
     print('\nLoading exoplanet dataset and solar system planets:')
 
     # Importing exoplanet dataset
     cat_exoplanet = os.path.join(published_dir, cat_exoplanet)
     dataset_exo = pd.read_csv(cat_exoplanet, index_col=0)
-    dataset_exo = dataset_exo[['mass', 'mass_error_min', 'mass_error_max',
-                               'radius',
-                               'radius_error_min', 'radius_error_max',
-                               'semi_major_axis', 'semi_major_axis_error_min',
-                               'semi_major_axis_error_max',
-                               'eccentricity', 'eccentricity_error_min',
-                               'eccentricity_error_max',
-                               'star_mass',
-                               'star_mass_error_min', 'star_mass_error_max',
-                               'star_radius', 'star_radius_error_min',
-                               'star_radius_error_max',
-                               'star_teff',
-                               'star_teff_error_min', 'star_teff_error_max']]
+    dataset_exo = dataset_exo[features_input]
 
     # Importing Solar system dataset
     cat_solar = os.path.join(published_dir, cat_solar)
     dataset_solar_system = pd.read_csv(cat_solar, index_col=0)
 
-    dataset_solar_system = dataset_solar_system[['mass', 'mass_error',
-                                                 'semi_major_axis',
-                                                 'semi_major_axis_error',
-                                                 'eccentricity',
-                                                 'eccentricity_error',
-                                                 'star_mass',
-                                                 'star_mass_error',
-                                                 'star_radius',
-                                                 'star_radius_error',
-                                                 'star_teff',
-                                                 'star_teff_error',
-                                                 'radius', 'radius_error']]
+    dataset_solar_system = dataset_solar_system[features_ss_input]
     # Remove NaNs in features only
-    dataset_exo = dataset_exo.dropna(subset=['mass', 'semi_major_axis',
-                                             'star_radius', 'star_mass',
-                                             'star_teff', 'radius'])
-    dataset_solar_system = dataset_solar_system.dropna(subset=['mass',
-                                                               'semi_major_axis',
-                                                               'star_radius',
-                                                               'star_mass',
-                                                               'star_teff',
-                                                               'radius'])
+    dataset_exo = dataset_exo.dropna(subset=features_input[::3])
+    dataset_solar_system = dataset_solar_system.dropna(subset=features_ss_input[::2])
 
     # Replace inf by NaN
     dataset_exo = dataset_exo.replace([np.inf, -np.inf], np.nan)
 
     # Replace NaN values in the error features by the 0.9 quantile value
-    error_columns = ['mass_error_min', 'mass_error_max',
-                     'radius_error_min', 'radius_error_max',
-                     'semi_major_axis_error_min', 'semi_major_axis_error_max',
-                     'eccentricity_error_min', 'eccentricity_error_max',
-                     'star_mass_error_min', 'star_mass_error_max',
-                     'star_radius_error_min', 'star_radius_error_max',
-                     'star_teff_error_min', 'star_teff_error_max']
+    error_columns = features_input[1::3] + features_input[2::3]
 
     for error_col in error_columns:
         # find the 0.9 quantile value of the error columns
@@ -245,30 +278,16 @@ def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laborato
     for feature in convert_features:
         dataset_exo = fd.jupiter_to_earth_mass(dataset_exo, feature)
 
-        # Computes the average error column
-    err_min_max = {
-        'mass_error': ['mass_error_min', 'mass_error_max'],
-        'radius_error': ['radius_error_min', 'radius_error_max'],
-        'semi_major_axis_error': ['semi_major_axis_error_min', 'semi_major_axis_error_max'],
-        'eccentricity_error': ['eccentricity_error_min', 'eccentricity_error_max'],
-        'star_mass_error': ['star_mass_error_min', 'star_mass_error_max'],
-        'star_radius_error': ['star_radius_error_min', 'star_radius_error_max'],
-        'star_teff_error': ['star_teff_error_min', 'star_teff_error_max']
-    }
-    err = ['mass_error', 'radius_error', 'semi_major_axis_error',
-           'eccentricity_error', 'star_mass_error', 'star_radius_error',
-           'star_teff_error']
+    # Computes the average error column
+    err_min_max = {}
+    for i in range(0, int(len(error_columns)/2), 1):
+        err_min_max[features_output[int(2*i+1)]] = [error_columns[i], error_columns[int(i+len(error_columns)/2)]]
 
+    err = features_output[::2]
     for error in err:
         dataset_exo[error] = dataset_exo[err_min_max[error]].mean(axis=1).abs()
 
-    dataset_exo = dataset_exo[['mass', 'mass_error',
-                               'semi_major_axis', 'semi_major_axis_error',
-                               'eccentricity', 'eccentricity_error',
-                               'star_mass', 'star_mass_error',
-                               'star_radius', 'star_radius_error',
-                               'star_teff', 'star_teff_error',
-                               'radius', 'radius_error']]
+    dataset_exo = dataset_exo[features_output]
 
     # # Changing the mass of Kepler-10 c
     # print('\nKepler 10 c changing mass and mass error')
@@ -304,14 +323,7 @@ def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laborato
     print('\nNumber of planets: ', len(dataset))
 
     # Select the same features as the original dataset
-    dataset = dataset[['mass', 'mass_error',
-                       'star_luminosity', 'star_luminosity_error',
-                       'temp_eq', 'temp_eq_error',
-                       'semi_major_axis', 'semi_major_axis_error',
-                       'star_mass', 'star_mass_error',
-                       'star_radius', 'star_radius_error',
-                       'star_teff', 'star_teff_error',
-                       'radius', 'radius_error']]
+    dataset = dataset[features_output]
 
     print('The selected features can be change in [load_dataset_errors]')
     print('\n', dataset.head())
@@ -319,40 +331,48 @@ def load_dataset_errors(cat_exoplanet='/home/antonin/Documents/1-Master/Laborato
     return dataset
 
 
-def load_dataset_RV(catalog_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
-                    feature_names=['mass', 'mass_error_min', 'mass_error_max',
-                                   'semi_major_axis', 'orbital_period',
-                                   'eccentricity',
-                                   'star_metallicity',
-                                   'star_radius', 'star_age',
-                                   'star_teff', 'star_mass']):
+def load_dataset_RV(
+        catalog_exoplanet='/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/exoplanet.eu_catalog_27-02-23.csv',
+        features_names_input=None,
+        features_names_output=None
+):
     '''
     Select exoplanet in the catalog which are detected by RV and do not have mass measurement.
     This dataset will be used to later predict their masses
 
     :param catalog_exoplanet: CSV file from exoplanet.eu
-    :param feature_names: list of features to select in the dataset
+    :param features_names_input: list of features to select in the dataset
+    :param features_names_output: list of features to select in the output dataset
+
     :return: dataset_radial: pandas struct with exoplanets detected by RV without radius measurements.
                              the mass is in Earth masses
     '''
+    if features_names_output is None:
+        features_names_output = ['mass', 'semi_major_axis', 'orbital_period', 'temp_eq', 'insolation',
+                                 'star_mass', 'star_radius', 'star_age']
+    if features_names_input is None:
+        features_names_input = ['mass', 'mass_error_min', 'mass_error_max',
+                                'semi_major_axis', 'orbital_period', 'eccentricity',
+                                'star_mass', 'star_radius', 'star_teff', 'star_age', 'star_metallicity']
+
+    print('\n #----- Start load_dataset_RV -----#')
 
     print('\nLoading exoplanet dataset found with RVs:')
     catalog_exoplanet = os.path.join(published_dir, catalog_exoplanet)
     dataset = pd.read_csv(catalog_exoplanet, index_col=0)
     # Select detected by RV
     dataset_radial = dataset[dataset.detection_type == 'Radial Velocity']
-    # dataset_radial = dataset
     # the radius column in Null (=NaN)
     dataset_radial = dataset_radial[pd.isnull(dataset_radial['radius'])]
 
     # Choosing features/data
-    if not feature_names:
+    if not features_names_input:
         print('No features selected, loading all features')
         pass
     else:
         print('Selecting features:')
-        pprint(feature_names)
-        dataset_radial = dataset_radial[feature_names]
+        print(features_names_input)
+        dataset_radial = dataset_radial[features_names_input]
         # Excluding exoplanets with missing data
         # dataset_radial = dataset_radial.dropna(subset=['mass', 'semi_major_axis',
         #                                                'eccentricity',
@@ -394,19 +414,18 @@ def load_dataset_RV(catalog_exoplanet='/home/antonin/Documents/1-Master/Laborato
     print('Computing insolation')
     dataset_radial = fd.add_insolation_dataset(dataset_radial)
 
-    print('\nNumber of planets: ', len(dataset_radial))
-
     # Convert some columns to float (because they are objects for some reason)
     dataset_radial['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
 
     # Remove the mass error column for Random forest
-    dataset_radial = dataset_radial[['mass',
-                                     'orbital_period',
-                                     'semi_major_axis',
-                                     'temp_eq',
-                                     'insolation',
-                                     'star_radius', 'star_age',
-                                     'star_mass']]
+    dataset_radial = dataset_radial[features_names_output]
+    print('Selected features for the dataset:')
+    print(features_names_output)
+
+    print('\nNumber of planets in the dataset: ', len(dataset_radial))
+    print('\n', dataset_radial.head())
+
+    print('\n #----- End load_dataset_RV -----#')
 
     return dataset_radial
 
@@ -430,16 +449,18 @@ def random_forest_regression(dataset,
             train_test_values = arrays with the values of the train and test sets
             train_test_sets = pandas dataframes with exoplanets and features names as well as the values
     '''
-
+    print('\n #----- Start random_forest_regression -----#')
     # Preparing the training and test sets
     # ------------------------------------
     # Exoplanet and Solar system dataset
+    # The solar system planets are the last 8 planets of the dataframe
     dataset_exo = dataset[:-8]
     dataset_sol = dataset[-8:]
 
     # Separating the data into dependent and independent variables
-    features = dataset_exo.iloc[:, :-1]   # mass, teq, etc
-    labels = dataset_exo.iloc[:, -1]      # radius
+    # Implies that radius must be at the end in features given
+    features = dataset_exo.iloc[:, :-1]  # mass, teq, etc
+    labels = dataset_exo.iloc[:, -1]  # radius
 
     # Splitting the dataset into the Training set and Test set
     X_train, X_test, y_train, y_test = train_test_split(features,
@@ -458,7 +479,6 @@ def random_forest_regression(dataset,
     y_train = pd.concat([y_train, y_train_sol], axis=0)
     X_test = pd.concat([X_test, X_test_sol], axis=0)
     y_test = pd.concat([y_test, y_test_sol], axis=0)
-
 
     try:
         # Outliers in the sample
@@ -482,7 +502,6 @@ def random_forest_regression(dataset,
         print('\nKepler-11 g removes from training set\n')
     except KeyError:
         pass
-        
 
     train_test_values = [X_train.values, X_test.values,
                          y_train.values, y_test.values]
@@ -518,7 +537,8 @@ def random_forest_regression(dataset,
         if not os.path.exists(outdir):
             os.mkdir(outdir)
 
-        name_Rf = 'r2_' + str(round(rf.best_score_, 2)) + '_' + str(datetime.datetime.now().strftime("%Y-%m-%d_%H:%M")) + '.pkl'
+        name_Rf = 'r2_' + str(round(rf.best_score_, 2)) + '_' + str(
+            datetime.datetime.now().strftime("%Y-%m-%d_%H:%M")) + '.pkl'
         name_Rf = os.path.join(outdir, name_Rf)
 
         joblib.dump(regr, name_Rf)
@@ -545,8 +565,8 @@ def random_forest_regression(dataset,
 
     # Mean squared errors of the train and test set
     print('Root mean squared errors')
-    print('Train set: ', np.sqrt(np.mean((y_train-y_train_predict)**2)),
-          '\nTest set:  ', np.sqrt(np.mean((y_test-y_test_predict)**2)))
+    print('Train set: ', np.sqrt(np.mean((y_train - y_train_predict) ** 2)),
+          '\nTest set:  ', np.sqrt(np.mean((y_test - y_test_predict) ** 2)))
 
     # Feature importance
     name_features = dataset.columns.tolist()
@@ -554,6 +574,8 @@ def random_forest_regression(dataset,
     _ = [print(name, ':  \t', value)
          for name, value
          in zip(name_features, regr.feature_importances_)]
+
+    print('\n #----- End random_forest_regression -----#')
 
     return regr, y_test_predict, train_test_values, train_test_sets
 
@@ -615,19 +637,19 @@ def computing_errorbars(regr, dataset_errors, train_test_sets):
     return radii_test_output_error, radii_test_input_error
 
 
-def predict_radius( my_name=np.array(['My planet b']),
-                    my_param_name=['mass',
-                                    'semi major axis',
-                                    'eccentricity',
-                                    'star_radius',
-                                    'star_teff',
-                                    'star_mass'],
-                    my_param=np.array([[1,
-                                        1,
-                                        0,
-                                        1,
-                                        5777,
-                                        1]]),
+def predict_radius(my_name=np.array(['My planet b']),
+                   my_param_name=['mass',
+                                  'semi major axis',
+                                  'eccentricity',
+                                  'star_radius',
+                                  'star_teff',
+                                  'star_mass'],
+                   my_param=np.array([[1,
+                                       1,
+                                       0,
+                                       1,
+                                       5777,
+                                       1]]),
                    regr=None,
                    jupiter_mass=False,
                    error_bar=False):
@@ -702,8 +724,8 @@ def predict_radius( my_name=np.array(['My planet b']),
     if error_bar:
         print('\nPredicting radius for planet:\n')
         my_param = pd.DataFrame(data=my_param,
-                                 index=my_name,
-                                 columns=np.array(my_param_name))
+                                index=my_name,
+                                columns=np.array(my_param_name))
         # Changing mass units to Earth mass
         if jupiter_mass:
             my_param = fd.jupiter_to_earth_mass(my_param, 'mass')
@@ -725,10 +747,7 @@ def predict_radius( my_name=np.array(['My planet b']),
         my_pred_planet = my_param[my_param_name]
 
         # Feature / feature error
-        print('my_pred_planet:', np.shape(my_pred_planet), my_pred_planet )
         features_with_errors = my_pred_planet.iloc[0].values.reshape(1, -1)
-        print('features_with_errors:', np.shape(features_with_errors), features_with_errors)
-        print('features_with_errors[0, ::2]', np.shape(features_with_errors[0, ::2]), features_with_errors[0, ::2])
         radius_error = regr.predict(mvn(features_with_errors[0, ::2],
                                         np.diag(features_with_errors[0, 1::2]),
                                         allow_singular=True).rvs(1000)).std()
@@ -744,8 +763,8 @@ def predict_radius( my_name=np.array(['My planet b']),
     else:
         print('\nPredicting radius for planet:\n')
         my_param = pd.DataFrame(data=my_param,
-                                 index=my_name,
-                                 columns=np.array(my_param_name))
+                                index=my_name,
+                                columns=np.array(my_param_name))
         # Changing mass units to Earth mass
         if jupiter_mass:
             my_param = fd.jupiter_to_earth_mass(my_param, 'mass')
@@ -767,7 +786,6 @@ def predict_radius( my_name=np.array(['My planet b']),
 
 
 def plot_dataset(dataset, predicted_radii=[], rv=False):
-
     if not rv:
         try:
             # Remove outlier planets
@@ -843,8 +861,8 @@ def plot_learning_curve(regr, dataset, save=False, fit=False):
     :return: Written files
     '''
 
-    features = dataset.iloc[:, :-1].values   # mass, teq, etc
-    labels = dataset.iloc[:, -1].values      # radius
+    features = dataset.iloc[:, :-1].values  # mass, teq, etc
+    labels = dataset.iloc[:, -1].values  # radius
 
     outdir = 'bem_output'
     if not os.path.exists(outdir):
@@ -908,15 +926,15 @@ def plot_validation_curves(regr, dataset, name='features',
     :return: Written files
     '''
 
-    features = dataset.iloc[:, :-1].values   # mass, teq, etc
-    labels = dataset.iloc[:, -1].values      # radius
+    features = dataset.iloc[:, :-1].values  # mass, teq, etc
+    labels = dataset.iloc[:, -1].values  # radius
 
     outdir = 'bem_output'
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
     if name == 'features':
-        param_range = np.arange(features.shape[1])+1
+        param_range = np.arange(features.shape[1]) + 1
         param_name = 'max_features'
     elif name == 'tree':
         param_range = np.array([10, 20, 35, 50, 100, 1000, 5000, 10000])
@@ -1032,8 +1050,8 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
 
     # Data
     X_train, X_test, y_train, y_test = train_test_sets
-    features = dataset.iloc[:, :-1].values   # mass, teq, etc
-    labels = dataset.iloc[:, -1].values      # radius
+    features = dataset.iloc[:, :-1].values  # mass, teq, etc
+    labels = dataset.iloc[:, -1].values  # radius
 
     # Check if some features are non continuous
     nb_unique_obj_in_features = np.array([len(set(features[:, x]))
@@ -1064,7 +1082,9 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         # My plot of exp_as_pyplot()
         exp = exp.as_list()
         vals = [x[1] for x in exp]
-        names = [x[0].replace("<=", r'$\leq$').replace('_',' ').replace('.00','').replace("<", "$<$").replace(">", "$>$") for x in exp]
+        names = [
+            x[0].replace("<=", r'$\leq$').replace('_', ' ').replace('.00', '').replace("<", "$<$").replace(">", "$>$")
+            for x in exp]
         # print(names)
         vals.reverse()
         names.reverse()
@@ -1078,18 +1098,18 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         rects = plt.barh(pos, vals, align='center', color=colors, alpha=0.5)
         for i, rect in enumerate(rects):
             # if rf_radius > 12.0:
-            plt.text(plt.xlim()[0]+0.03, rect.get_y()+0.2, str(names[i]))
+            plt.text(plt.xlim()[0] + 0.03, rect.get_y() + 0.2, str(names[i]))
 
         # Text box
         if my_true_radius:
             textstr = '\n'.join((
-                r'True radius=%.2f$R_\oplus$' % (my_true_radius, ),
-                r'RF radius=%.2f$R_\oplus$' % (rf_radius, ),
-                r'LIME radius=%.2f$R_\oplus$' % (lime_radius, )))
+                r'True radius=%.2f$R_\oplus$' % (my_true_radius,),
+                r'RF radius=%.2f$R_\oplus$' % (rf_radius,),
+                r'LIME radius=%.2f$R_\oplus$' % (lime_radius,)))
         else:
             textstr = '\n'.join((
-                r'RF radius=%.2f$R_\oplus$' % (rf_radius, ),
-                r'LIME radius=%.2f$R_\oplus$' % (lime_radius, )))
+                r'RF radius=%.2f$R_\oplus$' % (rf_radius,),
+                r'LIME radius=%.2f$R_\oplus$' % (lime_radius,)))
         # place a text box in upper left in axes coords
         plt.text(-4, 0.1, textstr,
                  bbox={'boxstyle': 'round', 'facecolor': 'white'})
@@ -1121,7 +1141,9 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         # My plot of exp_as_pyplot()
         exp = exp.as_list()
         vals = [x[1] for x in exp]
-        names = [x[0].replace("<=", r'$\leq$').replace('_',' ').replace('.00','').replace("<", "$<$").replace(">", "$>$") for x in exp]
+        names = [
+            x[0].replace("<=", r'$\leq$').replace('_', ' ').replace('.00', '').replace("<", "$<$").replace(">", "$>$")
+            for x in exp]
         # print(names)
         vals.reverse()
         names.reverse()
@@ -1135,13 +1157,13 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         rects = axs[j].barh(pos, vals, align='center', color=colors, alpha=0.5)
         for i, rect in enumerate(rects):
             # if rf_radius > 12.0:
-            axs[j].text(axs[j].get_xlim()[0]+0.03, rect.get_y()+0.2, str(names[i]))
+            axs[j].text(axs[j].get_xlim()[0] + 0.03, rect.get_y() + 0.2, str(names[i]))
 
         # Text box
         textstr = '\n'.join((
-            r'True radius=%.2f$R_\oplus$' % (y_test[planet], ),
-            r'RF radius=%.2f$R_\oplus$' % (rf_radius, ),
-            r'LIME radius=%.2f$R_\oplus$' % (lime_radius, )))
+            r'True radius=%.2f$R_\oplus$' % (y_test[planet],),
+            r'RF radius=%.2f$R_\oplus$' % (rf_radius,),
+            r'LIME radius=%.2f$R_\oplus$' % (lime_radius,)))
         # place a text box in upper left in axes coords
         axs[j].text(0.68, 0.1, textstr,
                     bbox={'boxstyle': 'round', 'facecolor': 'white'},
@@ -1168,7 +1190,8 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         plt.legend()
     # return exp
 
-def print_to_file(dataset, path_to_file, file_name):
+
+def write_list(dataset, path_to_file, file_name):
     '''
     Prints a pandas dataframe to a binary file.
     It checks if the file already exists or not. Creates it if not and overwrite if does.
@@ -1185,9 +1208,27 @@ def print_to_file(dataset, path_to_file, file_name):
         pickle.dump(dataset, fp)
         print('Done writing list into a binary file')
 
-#Read list to memory
+
+# Read list to memory
 def read_list(file_name):
     # for reading also binary mode is important
     with open(file_name, 'rb') as fp:
         n_list = pickle.load(fp)
         return n_list
+
+# def write_data(list,):
+# Write the features, parameters such as solar, rm_ecc, ...
+# Write the number of planets in dataset
+# Write the results of the radius prediction
+#
+# NOT DONE YET
+#
+#     with open(file_name, 'w') as f:
+#         f.write('Parameters for {}'.format(list))
+#         f.write(str(values))
+#
+# def create_dict(my_list):
+#     my_dict = {}
+#     for i in my_list:
+#         my_dict[locals()[i]] = i
+#     return my_dict

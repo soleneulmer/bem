@@ -68,7 +68,6 @@ def add_temp_eq_dataset(dataset):
 
 
 def add_temp_eq_error_dataset(dataset):
-
     semi_major_axis = dataset.semi_major_axis * AU.to('solRad')
     semi_major_axis_error = dataset.semi_major_axis_error * AU.to('solRad')
 
@@ -133,6 +132,61 @@ def add_insolation_dataset(dataset):
                   in zip(dataset.star_luminosity, dataset.semi_major_axis)]
     dataset.insert(2, 'insolation', insolation)
     return dataset
+
+
+def add_n_planets_syst_dataset(dataset):
+    '''
+    Computes the number of planet in a system.
+    And appends it to the dataset.
+    HAS TO BE DONE BEFORE MODIFYING THE DATASET: otherwise the number of planets per system will not be accurate
+    :param dataset:
+    :return: dataset
+    '''
+    planet_names = dataset.index.values.tolist()
+
+    star = []
+    for name in planet_names:
+        star.append(name[:-1])
+
+    star_name_n_planet = pd.Series(star).value_counts()
+    n_planets = common_element(star, star_name_n_planet)
+
+    dataset.insert(2, 'n_planets', n_planets)
+
+    return dataset
+
+def add_weighted_relative_distance(dataset):
+    '''
+    Computes the mass weigthed relative distance between planets of a same system.
+    And appends it to the dataset.
+    abs( semi_major_axis_pl1 - semi_major_axis_pl2 ) / sqrt(mass_pl1^2 + mass_pl2^2 )
+    :param dataset:
+    :return: dataset
+    '''
+
+    # NOT DONE YET
+
+    weight_rel_dist = abs(semi_major_axis_pl1 - semi_major_axis_pl2) / np.sqrt(mass_pl1**2 + mass_pl2**2)
+    dataset.insert(2, 'weight_rel_dist', weight_rel_dist)
+
+    return dataset
+
+def common_element(list1, df):
+    '''
+    Looks for the same element in a list and the indices of the df.
+    If a element is the same it returns the value corresponding to the element in the dataframe ordered like list1
+    Example:
+
+    :param list1=['51 Peg b','bem','Geneva','Switzerland']
+    :param df =
+                'Geneva'        1559
+                '51 Peg b'      1995
+                'Switzerland'   1291
+                'bem'           1899
+
+    :return: [1995, 1899, 1559, 1291]
+    '''
+    return [df[element] for element in list1 if element in df.index.values]
 
 
 def jupiter_to_earth_mass(dataset, column_name):
