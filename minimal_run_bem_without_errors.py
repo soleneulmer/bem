@@ -12,24 +12,24 @@ import corner
 #
 # Features wanted as parameters and features needed to do calculations to create new features in load_dataset
 # For the features needed to do calculations check format_dataset.py
-features_load_dataset_input = ['mass', 'semi_major_axis', 'orbital_period', 'eccentricity',
-                               'star_mass', 'star_radius', 'star_teff', 'star_age', 'star_metallicity',
+features_load_dataset_input = ['mass', 'orbital_period', 'eccentricity', 'semi_major_axis',
+                               'star_mass', 'star_radius', 'star_teff', 'star_metallicity',
                                'radius']
 
 # Features wanted as parameters in load_dataset:
-features_load_dataset_output = ['mass', 'semi_major_axis', 'orbital_period', 'temp_eq', 'insolation',
-                                'star_mass', 'star_radius', 'star_age',
+features_load_dataset_output = ['mass', 'orbital_period', 'eccentricity',
+                                'star_mass', 'star_radius', 'star_teff', 'star_metallicity',
                                 'radius']
 
 # Features wanted as parameters and features needed to do calculations to create new features in load_dataset_RV
 # For the features needed to do calculations check format_dataset.py
 features_load_dataset_RV_input = ['mass', 'mass_error_min', 'mass_error_max',
-                                  'semi_major_axis', 'orbital_period', 'eccentricity',
-                                  'star_mass', 'star_radius', 'star_teff', 'star_age', 'star_metallicity']
+                                  'orbital_period', 'eccentricity', 'semi_major_axis',
+                                  'star_mass', 'star_radius', 'star_teff', 'star_metallicity']
 
 # Features wanted as parameters in load_dataset_RV:
-features_load_dataset_RV_output = ['mass', 'semi_major_axis', 'orbital_period', 'temp_eq', 'insolation',
-                                   'star_mass', 'star_radius', 'star_age']
+features_load_dataset_RV_output = ['mass', 'orbital_period', 'eccentricity',
+                                   'star_mass', 'star_radius', 'star_teff', 'star_metallicity']
 
 # Features wanted as parameters and features needed to do calculations to create new features in load_dataset_error
 # Needs to be formatted the following way:
@@ -68,43 +68,66 @@ features_load_dataset_errors_output = ['mass', 'mass_error',
                                        'radius', 'radius_error']
 
 # Features wanted as parameters in plot_LIME_predictions:
-features_plot_LIME_predictions = ['mass', 'semi_major_axis', 'orbital_period', 'temp_eq', 'insolation',
-                                  'star_mass', 'star_radius', 'star_teff', 'star_luminosity', 'star_age',
+features_plot_LIME_predictions = ['mass', 'orbital_period', 'eccentricity',
+                                  'star_mass', 'star_radius', 'star_teff', 'star_metallicity',
                                   'radius']
 
-# features = bem.create_dict([features_load_dataset_input,
-#                             features_load_dataset_output,
-#                             features_load_dataset_RV_input,
-#                             features_load_dataset_RV_output])
+features = {'features_load_dataset_input': features_load_dataset_input,
+            'features_load_dataset_output': features_load_dataset_output,
+            'features_load_dataset_RV_input': features_load_dataset_RV_input,
+            'features_load_dataset_RV_output': features_load_dataset_RV_output,
+            'features_load_dataset_errors_input': features_load_dataset_errors_input,
+            'features_load_dataset_errors_ss_input': features_load_dataset_errors_ss_input,
+            'features_load_dataset_errors_output': features_load_dataset_errors_output,
+            'features_plot_LIME_predictions': features_plot_LIME_predictions}
 
 # ------------------------------ END CHOOSING THE FEATURES ------------------------------ #
 # ------------------------------ CHOOSING PARAMETERS ------------------------------ #
 solar = True
-rm_ecc = False
-rm_outliers = True
-# parameters = bem.create_dict(['solar',
-#                               'rm_ecc',
-#                               'rm_outliers'])
+rm_ecc = True
+rm_outliers = 'published_output/ParametersSet5/outliersSet5.pkl'
+parameters = {'solar': solar,
+              'rm_ecc': rm_ecc,
+              'rm_outliers': rm_outliers}
 
 # ------------------------------ END CHOOSING PARAMETERS ------------------------------ #
 # ------------------------------ CHOOSING PLANET TO PREDICT RADIUS ------------------------------ #
 name = ['GJ 357 b']
+
 param_name = ['mass', 'mass_error',
-              'orbital_period', 'orbital_period_error',
               'eccentricity', 'eccentricity_error',
-              'semi_major_axis', 'semi_major_axis_error',
+              'orbital_period', 'orbital_period_error',
               'star_teff', 'star_teff_error',
               'star_radius', 'star_radius_error',
-              'star_age', 'star_age_error',
-              'star_mass', 'star_mass_error']
+              'star_mass', 'star_mass_error',
+              'star_metallicity', 'star_metallicity_error']
+
+# param_name = ['mass', 'mass_error',
+#               'eccentricity', 'eccentricity_error',
+#               'semi_major_axis', 'semi_major_axis_error',
+#               'n_planets', 'n_planets_error',
+#               'star_teff', 'star_teff_error',
+#               'star_radius', 'star_radius_error',
+#               'star_age', 'star_age_error',
+#               'star_mass', 'star_mass_error']
+
+# param = [[0.006566, 0.00101,
+#           0.047, 0.059,
+#           0.033, 0.001,
+#           3, 0,
+#           3505.0, 51.0,
+#           0.337, 0.015,
+#           5, 1,
+#           0.342, 0.011]]
+
 param = [[0.006566, 0.00101,
-          3.93086, 0.00004,
           0.047, 0.059,
-          0.033, 0.001,
+          3.93086, 4E-05,
           3505.0, 51.0,
           0.337, 0.015,
-          5, 1,
-          0.342, 0.011]]
+          0.342, 0.011,
+          -0.12, 0.16]]
+
 jupiter_mass = True,
 error_bar = True
 # ------------------------------ END CHOOSING PLANET TO PREDICT RADIUS ------------------------------ #
@@ -116,15 +139,20 @@ dataset = bem.load_dataset(feature_names_input=features_load_dataset_input,
                            rm_ecc=rm_ecc,
                            rm_outliers=rm_outliers)
 
-figure = corner.corner(dataset,
-                       labels=list(dataset.columns),
-                       quantiles=[0.16, 0.5, 0.84],
-                       show_titles=True,
-                       title_kwargs={"fontsize": 12})
+# write some data to a file
+bem.write_data(features, parameters, len(dataset), file_path='published_output/', file_name='Parameters.txt')
+
+# Corner plot to see the correlation of parameters
+# figure = corner.corner(dataset,
+#                        labels=list(dataset.columns),
+#                        quantiles=[0.16, 0.5, 0.84],
+#                        show_titles=True,
+#                        title_kwargs={"fontsize": 12})
+
 # Plot the dataset radius as a function of mass and equilibrium temperature
 bem.plot_dataset(dataset)
 # Build the random forest model and predict radius of the dataset
-regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset, fit=False)
+regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset, fit=True)
 
 # # Load exoplanet and solar system planets dataset with uncertainties
 # dataset_errors = load_dataset_errors()
@@ -150,11 +178,11 @@ radii_RV_RF = regr.predict(dataset_rv)
 bem.plot_dataset(dataset_rv, predicted_radii=radii_RV_RF, rv=True)
 
 # Plot the learning curve
-bem.plot_learning_curve(regr, dataset, save=False, fit=False)
+bem.plot_learning_curve(regr, dataset, save=True, fit=True)
 # Plot the validation curves
-bem.plot_validation_curves(regr, dataset, name='features', save=False, fit=False)
-bem.plot_validation_curves(regr, dataset, name='tree', save=False, fit=False)
-bem.plot_validation_curves(regr, dataset, name='depth', save=False, fit=False)
+bem.plot_validation_curves(regr, dataset, name='features', save=True, fit=True)
+bem.plot_validation_curves(regr, dataset, name='tree', save=True, fit=True)
+bem.plot_validation_curves(regr, dataset, name='depth', save=True, fit=True)
 
 # Explain the RF predictions
 exp = bem.plot_LIME_predictions(regr, dataset, train_test_sets)
