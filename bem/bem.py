@@ -50,7 +50,7 @@ def load_dataset(
         feature_names_output=None,
         solar=True,
         rm_ecc=False,
-        rm_outliers=True
+        rm_outliers=None
 ):
     '''
     Select exoplanet in the catalog which have mass and radius measurements
@@ -144,17 +144,23 @@ def load_dataset(
     # The notebook will save the outliers to the file 'outliers.pkl' that can be now used by rerunning the script with rm_outliers=True
     if rm_outliers:
         print('Removing outliers')
-        dataset = fd.rm_outliers(dataset, outliers_pkl='bem_output/outliers.pkl')
+        dataset = fd.rm_outliers(dataset, outliers_pkl=rm_outliers)
     else:
         print('Not removing outliers')
 
     # Add observables
-    print('Computing planet\'s equilibrium temperature')
-    dataset = fd.add_temp_eq_dataset(dataset)
-    print('Computing stellar luminosity')
-    dataset = fd.add_star_luminosity_dataset(dataset)
-    print('Computing insolation')
-    dataset = fd.add_insolation_dataset(dataset)
+    if 'temp_eq' in feature_names_output:
+        print('Computing planet\'s equilibrium temperature')
+        dataset = fd.add_temp_eq_dataset(dataset)
+    if 'star_luminosity' in feature_names_output:
+        print('Computing stellar luminosity')
+        dataset = fd.add_star_luminosity_dataset(dataset)
+    if 'insolation' in feature_names_output:
+        print('Computing insolation')
+        dataset = fd.add_insolation_dataset(dataset)
+    # Convert some columns to float (because they are objects for some reason)
+    if 'star_age' in feature_names_output:
+        dataset['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
 
     # Returning the dataset with selected features
     print('Selected features for the dataset:')
@@ -164,8 +170,6 @@ def load_dataset(
     print('\n', dataset.head())
 
     dataset = dataset[feature_names_output]
-    # Convert some columns to float (because they are objects for some reason)
-    dataset['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
 
     print('Writing dataset to a pickle file')
     write_list(dataset, 'published_output/', 'filtered_dataset.pkl')
@@ -280,8 +284,9 @@ def load_dataset_errors(
 
     # Computes the average error column
     err_min_max = {}
-    for i in range(0, int(len(error_columns)/2), 1):
-        err_min_max[features_output[int(2*i+1)]] = [error_columns[i], error_columns[int(i+len(error_columns)/2)]]
+    for i in range(0, int(len(error_columns) / 2), 1):
+        err_min_max[features_output[int(2 * i + 1)]] = [error_columns[i],
+                                                        error_columns[int(i + len(error_columns) / 2)]]
 
     err = features_output[::2]
     for error in err:
@@ -314,10 +319,12 @@ def load_dataset_errors(
         dataset = dataset_exo
 
     # Add observables
-    print('Computing planet\'s equilibrium temperature')
-    dataset = fd.add_temp_eq_error_dataset(dataset)
-    print('Computing stellar luminosity')
-    dataset = fd.add_star_luminosity_error_dataset(dataset)
+    if 'temp_eq' in features_output:
+        print('Computing planet\'s equilibrium temperature')
+        dataset = fd.add_temp_eq_error_dataset(dataset)
+    if 'star_luminosity' in features_output:
+        print('Computing stellar luminosity')
+        dataset = fd.add_star_luminosity_error_dataset(dataset)
 
     # Number of planets in dataset
     print('\nNumber of planets: ', len(dataset))
@@ -360,6 +367,9 @@ def load_dataset_RV(
     print('\nLoading exoplanet dataset found with RVs:')
     catalog_exoplanet = os.path.join(published_dir, catalog_exoplanet)
     dataset = pd.read_csv(catalog_exoplanet, index_col=0)
+    # adding the number of planets per system to the dataset
+    print('Adding the number of planets in every system to the dataset')
+    dataset = fd.add_n_planets_syst_dataset(dataset)
     # Select detected by RV
     dataset_radial = dataset[dataset.detection_type == 'Radial Velocity']
     # the radius column in Null (=NaN)
@@ -373,17 +383,15 @@ def load_dataset_RV(
         print('Selecting features:')
         print(features_names_input)
         dataset_radial = dataset_radial[features_names_input]
+        print('length dataset radial before rm nan', len(dataset_radial))
         # Excluding exoplanets with missing data
         # dataset_radial = dataset_radial.dropna(subset=['mass', 'semi_major_axis',
         #                                                'eccentricity',
         #                                                'star_metallicity',
         #                                                'star_radius', 'star_teff',
         #                                                'star_mass'])
-
-        dataset_radial = dataset_radial.dropna(axis=0, how='any', inplace=False)
-
     # Replace inf by NaN
-    dataset_radial = dataset_radial.replace([np.inf, -np.inf], np.nan)
+    dataset_radial.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     # Replace NaN values in the error features by the 0.9 quantile value
     error_columns = ['mass_error_min', 'mass_error_max']
@@ -394,9 +402,14 @@ def load_dataset_RV(
         max_error = 0.0
         print(error_col, max_error)
         # replace NaN by the 0.9 error value
-        dataset_radial[error_col] = dataset_radial[error_col].replace(np.nan,
-                                                                      max_error)
-        # Converting from Jupiter to Earth masses/radii - exoplanets
+        dataset_radial[error_col] = dataset_radial[error_col].replace(np.nan, max_error)
+
+    # Removing NaN values
+    dataset_radial.dropna(axis=0, how='any', inplace=True)
+    print('length dataset radial after rm nan', len(dataset_radial))
+
+
+    # Converting from Jupiter to Earth masses/radii - exoplanets
     print('Converting planet\'s mass/radius in Earth masses/radii')
     convert_features = ['mass', 'mass_error_max', 'mass_error_min']
     for feature in convert_features:
@@ -407,15 +420,18 @@ def load_dataset_RV(
                                                    'mass_error_max']].mean(axis=1).abs()
 
     # Adding observables
-    print('Computing planet\'s equilibrium temperature')
-    dataset_radial = fd.add_temp_eq_dataset(dataset_radial)
-    print('Computing stellar luminosity')
-    dataset_radial = fd.add_star_luminosity_dataset(dataset_radial)
-    print('Computing insolation')
-    dataset_radial = fd.add_insolation_dataset(dataset_radial)
-
+    if 'temp_eq' in features_names_output:
+        print('Computing planet\'s equilibrium temperature')
+        dataset_radial = fd.add_temp_eq_dataset(dataset_radial)
+    if 'star_luminosity' in features_names_output:
+        print('Computing stellar luminosity')
+        dataset_radial = fd.add_star_luminosity_dataset(dataset_radial)
+    if 'insolation' in features_names_output:
+        print('Computing insolation')
+        dataset_radial = fd.add_insolation_dataset(dataset_radial)
     # Convert some columns to float (because they are objects for some reason)
-    dataset_radial['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
+    if 'star_age' in features_names_output:
+        dataset_radial['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
 
     # Remove the mass error column for Random forest
     dataset_radial = dataset_radial[features_names_output]
@@ -734,11 +750,14 @@ def predict_radius(my_name=np.array(['My planet b']),
             print('Planetary mass is given in Earth mass')
 
         # Computing equilibrium temperature
-        my_param = fd.add_temp_eq_error_dataset(my_param)
+        if 'temp_eq' in my_param:
+            my_param_name = fd.add_temp_eq_error_dataset(my_param)
         # Computing stellar luminosity
-        my_param = fd.add_star_luminosity_error_dataset(my_param)
+        if 'star_luminosity' in my_param:
+            my_param_name = fd.add_star_luminosity_error_dataset(my_param)
         # Computing insolation
-        my_param = fd.add_insolation_dataset(my_param)
+        if 'insolation' in my_param:
+            my_param_name = fd.add_insolation_dataset(my_param)
 
         # Planet with error bars
         print('Planet with error bars\n', my_param.iloc[0])
@@ -772,9 +791,11 @@ def predict_radius(my_name=np.array(['My planet b']),
             print('Planetary mass is given in Earth mass')
 
         # Computing equilibrium temperature
-        my_param = fd.add_temp_eq_dataset(my_param)
+        if 'temp_eq' in my_param:
+            my_param = fd.add_temp_eq_dataset(my_param)
         # Computing stellar luminosity
-        my_param = fd.add_star_luminosity_dataset(my_param)
+        if 'star_luminosity' in my_param:
+            my_param = fd.add_star_luminosity_dataset(my_param)
         # Select features
         my_pred_planet = my_param[my_param_name]
         # Radius prediction
@@ -801,10 +822,17 @@ def plot_dataset(dataset, predicted_radii=[], rv=False):
         ax.set_xscale('log')
         ax.set_yscale('log')
 
-        size = dataset.temp_eq
-        plt.scatter(dataset.mass, dataset.radius, c=size,
-                    cmap=cm.magma_r, s=4, label='Verification sample')
-        plt.colorbar(label=r'Equilibrium temperature (K)')
+        if 'temp_eq' in dataset.columns:
+            plt.scatter(dataset.mass, dataset.radius, c=dataset.temp_eq,
+                        cmap=cm.magma_r, s=4, label='Verification sample')
+            plt.colorbar(label=r'Equilibrium temperature (K)')
+        elif 'star_teff' in dataset.columns:
+            plt.scatter(dataset.mass, dataset.radius, c=dataset.star_teff,
+                        cmap=cm.magma_r, s=4, label='Verification sample')
+            plt.colorbar(label=r'Star Effective Temperature (K)')
+        else:
+            plt.scatter(dataset.mass, dataset.radius, c='k', alpha=0.5,
+                        s=4, label='Verification sample')
         plt.xlabel(r'Mass ($M_\oplus$)')
         plt.ylabel(r'Radius ($R_\oplus$)')
         plt.legend(loc='lower right', markerscale=0,
@@ -817,10 +845,18 @@ def plot_dataset(dataset, predicted_radii=[], rv=False):
         ax.set_xscale('log')
         ax.set_yscale('log')
 
-        size = dataset.temp_eq
-        plt.scatter(dataset.mass, predicted_radii, c=size,
-                    cmap=cm.magma_r, s=4, label='RV sample')
-        plt.colorbar(label=r'Equilibrium temperature (K)')
+        if 'temp_eq' in dataset.columns:
+            plt.scatter(dataset.mass, predicted_radii, c=dataset.temp_eq,
+                        cmap=cm.magma_r, s=4, label='RV sample')
+            plt.colorbar(label=r'Equilibrium temperature (K)')
+        elif 'star_teff' in dataset.columns:
+            plt.scatter(dataset.mass, predicted_radii, c=dataset.star_teff,
+                        cmap=cm.magma_r, s=4, label='RV sample')
+            plt.colorbar(label=r'Star Effective Temperature (K)')
+        else:
+            plt.scatter(dataset.mass, predicted_radii, c='k', alpha=0.5,
+                        s=4, label='RV sample')
+
         plt.xlabel(r'Mass ($M_\oplus$)')
         plt.ylabel(r'Radius ($R_\oplus$)')
         plt.legend(loc='lower right', markerscale=0,
@@ -1175,10 +1211,13 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
     ax = fig.add_subplot(111)
     ax.set_xscale('log')
     ax.set_yscale('log')
-    size = X_test.temp_eq.values
-    plt.scatter(X_test.mass.values, y_test.values,
-                c=size, cmap=cm.magma_r)
-    plt.colorbar(label=r'Equilibrium temperature (K)')
+    if 'temp_eq' in X_test.columns:
+        size = X_test.temp_eq.values
+        plt.scatter(X_test.mass.values, y_test.values,
+                    c=size, cmap=cm.magma_r)
+        plt.colorbar(label=r'Equilibrium temperature (K)')
+    else:
+        plt.scatter(X_test.mass.values, y_test.values, c='k', alpha=0.5)
     plt.xlabel(r'Mass ($M_\oplus$)')
     plt.ylabel(r'Radius ($R_\oplus$)')
     plt.legend()
@@ -1216,17 +1255,39 @@ def read_list(file_name):
         n_list = pickle.load(fp)
         return n_list
 
-# def write_data(list,):
-# Write the features, parameters such as solar, rm_ecc, ...
-# Write the number of planets in dataset
-# Write the results of the radius prediction
-#
-# NOT DONE YET
-#
-#     with open(file_name, 'w') as f:
-#         f.write('Parameters for {}'.format(list))
-#         f.write(str(values))
-#
+
+def write_data(my_features, my_params, my_planets, file_path='', file_name='parameters.txt'):
+    """
+    Write the features, parameters such as solar, rm_ecc, ...
+    Write the number of planets in dataset
+    Write the results of the radius prediction <- NOT DONE
+    """
+
+    file_name_path = file_path + file_name
+
+    with open(file_name_path, 'w') as f:
+
+        # Write the parameters used by the functions
+        for key, value in my_features.items():
+            f.write('\nParameters for {}:\n'.format(key))
+            f.write(str(value))
+            f.write('\n')
+
+        f.write('\n')
+        # Write some parameters
+        for key, value in my_params.items():
+            f.write('{}: {}\n'.format(key, value))
+
+        f.write('\n')
+        # Write the number of planets in the datasets (normal and RV)
+        f.write('# planets in the dataset: {}\n'.format(my_planets))
+        # f.write('# planets in the RV dataset: {}\n'.format(nplanets_RV))
+
+        f.close
+
+    return None
+
+
 # def create_dict(my_list):
 #     my_dict = {}
 #     for i in my_list:
