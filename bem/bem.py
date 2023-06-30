@@ -34,13 +34,14 @@ __all__ = [
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))
-published_dir = os.path.join(here, '/home/antonin/Documents/1-Master/Laboratory/APLII/bem', 'published_output')
-if os.path.exists(os.path.join(published_dir, 'r2_0.89_2023-04-17_14:32.pkl')):
+published_dir = os.path.join(here, '/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/',
+                             'Errorbars')
+if os.path.exists(os.path.join(published_dir, 'r2_0.88_2023-06-30_17:55.pkl')):
     pass
 else:
-    published_dir = os.path.join(sys.prefix, 'published_output')
+    published_dir = os.path.join(sys.prefix, 'Errorbars')
 
-saved_pickle_model = os.path.join(published_dir, 'r2_0.89_2023-04-17_14:32.pkl')
+saved_pickle_model = os.path.join(published_dir, 'r2_0.88_2023-06-30_17:55.pkl')
 
 
 def load_dataset(
@@ -86,10 +87,14 @@ def load_dataset(
     # adding the number of planets per system to the dataset
     print('Adding the number of planets in every system to the dataset')
     dataset_exo = fd.add_n_planets_syst_dataset(dataset_exo)
+    # Keep some planets because we use them in predictions
+    dataset_pred = dataset_exo[
+        dataset_exo.index == 'TRAPPIST-1 g']  # , 'HATS-35 b', 'CoRoT-13 b', 'Kepler-75 b', 'WASP-17 b', 'Kepler-20 c']]
     # Removing the masses detected with Theoretical (Chen&Kipping 2017 MR relation) & TTV, Timing
     print('Removing the planets whose masses where detected with Theoretical, TTV or Timing')
     dataset_exo = dataset_exo[
         dataset_exo.mass_detection_type.isin(['Radial Velocity', np.nan, 'Astrometry', 'Spectrum'])]
+    dataset_exo = pd.concat([dataset_exo, dataset_pred], axis=0)
 
     if solar:
         # Importing Solar system dataset
@@ -152,12 +157,12 @@ def load_dataset(
     if 'temp_eq' in feature_names_output:
         print('Computing planet\'s equilibrium temperature')
         dataset = fd.add_temp_eq_dataset(dataset)
-    if 'star_luminosity' in feature_names_output:
-        print('Computing stellar luminosity')
-        dataset = fd.add_star_luminosity_dataset(dataset)
-    if 'insolation' in feature_names_output:
-        print('Computing insolation')
-        dataset = fd.add_insolation_dataset(dataset)
+    # if 'star_luminosity' in feature_names_output:
+    print('Computing stellar luminosity')
+    dataset = fd.add_star_luminosity_dataset(dataset)
+    # if 'insolation' in feature_names_output:
+    print('Computing insolation')
+    dataset = fd.add_insolation_dataset(dataset)
     # Convert some columns to float (because they are objects for some reason)
     if 'star_age' in feature_names_output:
         dataset['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
@@ -170,6 +175,20 @@ def load_dataset(
     print('\n', dataset.head())
 
     dataset = dataset[feature_names_output]
+
+    print('Checking if some planets are in dataset:\n')
+    if 'TRAPPIST-1 g' in dataset.index:
+        print('TRAPPIST-1 g in dataset')
+    if 'HATS-35 b' in dataset.index:
+        print('HATS-35 b in dataset')
+    if 'CoRoT-13 b' in dataset.index:
+        print('CoRoT-13 b in dataset')
+    if 'Kepler-75 b' in dataset.index:
+        print('Kepler-75 b in dataset')
+    if 'WASP-17 b' in dataset.index:
+        print('WASP-17 b in dataset')
+    if 'Kepler-20 c' in dataset.index:
+        print('Kepler-20 c in dataset')
 
     print('Writing dataset to a pickle file')
     write_list(dataset, 'published_output/', 'filtered_dataset.pkl')
@@ -275,7 +294,8 @@ def load_dataset_errors(
         # replace NaN by the 0.9 error value
         dataset_exo[error_col] = dataset_exo[error_col].replace(np.nan,
                                                                 max_error)
-        # Converting from Jupiter to Earth masses/radii - exoplanets
+
+    # Converting from Jupiter to Earth masses/radii - exoplanets
     print('Converting planet\'s mass/radius in Earth masses/radii')
     convert_features = ['mass', 'mass_error_max', 'mass_error_min',
                         'radius', 'radius_error_max', 'radius_error_min']
@@ -283,16 +303,21 @@ def load_dataset_errors(
         dataset_exo = fd.jupiter_to_earth_mass(dataset_exo, feature)
 
     # Computes the average error column
+    # for i in range(0, int(len(error_columns) / 2), 1):
+    #     err_min_max[features_output[int(2 * i + 1)]] = [error_columns[i],
+    #                                                     error_columns[int(i + len(error_columns) / 2)]]
+    # for i, n in enumerate(features_input):
+    #     err_min_max[features_output[int(2 * i + 1)]] =
     err_min_max = {}
-    for i in range(0, int(len(error_columns) / 2), 1):
-        err_min_max[features_output[int(2 * i + 1)]] = [error_columns[i],
-                                                        error_columns[int(i + len(error_columns) / 2)]]
+    err = []
+    for i in features_input[::3]:
+        err_min_max[i+'_error'] = [i+'_error_min',i+'_error_max']
+        err.append(i+'_error')
+    print(err_min_max)
+    print(err)
 
-    err = features_output[::2]
     for error in err:
         dataset_exo[error] = dataset_exo[err_min_max[error]].mean(axis=1).abs()
-
-    dataset_exo = dataset_exo[features_output]
 
     # # Changing the mass of Kepler-10 c
     # print('\nKepler 10 c changing mass and mass error')
@@ -325,6 +350,8 @@ def load_dataset_errors(
     if 'star_luminosity' in features_output:
         print('Computing stellar luminosity')
         dataset = fd.add_star_luminosity_error_dataset(dataset)
+
+    dataset = dataset[features_output]
 
     # Number of planets in dataset
     print('\nNumber of planets: ', len(dataset))
@@ -394,7 +421,7 @@ def load_dataset_RV(
     dataset_radial.replace([np.inf, -np.inf], np.nan, inplace=True)
 
     # Replace NaN values in the error features by the 0.9 quantile value
-    error_columns = ['mass_error_min', 'mass_error_max']
+    error_columns = ['mass_sini_error_min', 'mass_sini_error_max']
 
     for error_col in error_columns:
         # find the 0.9 quantile value of the error columns
@@ -408,27 +435,28 @@ def load_dataset_RV(
     dataset_radial.dropna(axis=0, how='any', inplace=True)
     print('length dataset radial after rm nan', len(dataset_radial))
 
-
     # Converting from Jupiter to Earth masses/radii - exoplanets
     print('Converting planet\'s mass/radius in Earth masses/radii')
-    convert_features = ['mass', 'mass_error_max', 'mass_error_min']
+    convert_features = ['mass_sini', 'mass_sini_error_max', 'mass_sini_error_min']
     for feature in convert_features:
         dataset_radial = fd.jupiter_to_earth_mass(dataset_radial, feature)
 
     # Computes the average error column
-    dataset_radial['mass_error'] = dataset_radial[['mass_error_min',
-                                                   'mass_error_max']].mean(axis=1).abs()
+    dataset_radial['mass_error'] = dataset_radial[['mass_sini_error_min',
+                                                        'mass_sini_error_max']].mean(axis=1).abs()
+    # Rename column mass_sini asdataset_radial['mass_error'] mass to simply my life
+    dataset_radial['mass'] = dataset_radial['mass_sini']
 
     # Adding observables
     if 'temp_eq' in features_names_output:
         print('Computing planet\'s equilibrium temperature')
         dataset_radial = fd.add_temp_eq_dataset(dataset_radial)
-    if 'star_luminosity' in features_names_output:
-        print('Computing stellar luminosity')
-        dataset_radial = fd.add_star_luminosity_dataset(dataset_radial)
-    if 'insolation' in features_names_output:
-        print('Computing insolation')
-        dataset_radial = fd.add_insolation_dataset(dataset_radial)
+    # if 'star_luminosity' in features_names_output:
+    print('Computing stellar luminosity')
+    dataset_radial = fd.add_star_luminosity_dataset(dataset_radial)
+    # if 'insolation' in features_names_output:
+    print('Computing insolation')
+    dataset_radial = fd.add_insolation_dataset(dataset_radial)
     # Convert some columns to float (because they are objects for some reason)
     if 'star_age' in features_names_output:
         dataset_radial['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
@@ -451,7 +479,7 @@ def random_forest_regression(dataset,
                              fit=False):
     '''
     Split the dataset into a training (75%) and testing set (25%)
-    Removing 3 outliers planets from both sets
+    Making sure some planets are in the testing set
 
     If fit is True:
     Fitting the hyperparameters of the random forest regression
@@ -479,7 +507,7 @@ def random_forest_regression(dataset,
     labels = dataset_exo.iloc[:, -1]  # radius
 
     # Splitting the dataset into the Training set and Test set
-    X_train, X_test, y_train, y_test = train_test_split(features,
+    x_train, x_test, y_train, y_test = train_test_split(features,
                                                         labels,
                                                         test_size=0.25,
                                                         random_state=0)
@@ -491,37 +519,109 @@ def random_forest_regression(dataset,
                                                                         test_size=0.25,
                                                                         random_state=0)
 
-    X_train = pd.concat([X_train, X_train_sol], axis=0)
+    test_planets_x = pd.DataFrame()
+    test_planets_y = pd.DataFrame()
+
+    print('Removing some planets from the training set and adding them to the test set:\n')
+    if 'TRAPPIST-1 g' in x_train.index:
+        print('\nRemoving TRAPPIST-1 g from train set and add it to test set')
+        # Add TRAPPIST-1 g to the test set
+        test_planets_x = pd.concat([test_planets_x, x_train.loc[['TRAPPIST-1 g']]], axis=0)
+        test_planets_y = pd.concat([test_planets_y, y_train.loc[['TRAPPIST-1 g']]], axis=0)
+        # Remove TRAPPIST-1 g from the training set
+        x_train = x_train.drop(['TRAPPIST-1 g'])
+        y_train = y_train.drop(labels=['TRAPPIST-1 g'])
+        print('TRAPPIST-1 g removed from train set and added it to test set')
+
+    if 'HATS-35 b' in x_train.index:
+        print('\nRemoving HATS-35 b from train set and add it to test set')
+        # Add HATS-35 b to the test set
+        test_planets_x = pd.concat([test_planets_x, x_train.loc[['HATS-35 b']]], axis=0)
+        test_planets_y = pd.concat([test_planets_y, y_train.loc[['HATS-35 b']]], axis=0)
+        # Remove HATS-35 b from the training set
+        x_train = x_train.drop(['HATS-35 b'])
+        y_train = y_train.drop(labels=['HATS-35 b'])
+        print('HATS-35 b removed from train set and added it to test set')
+
+    if 'CoRoT-13 b' in x_train.index:
+        print('\nRemoving CoRoT-13 b from train set and add it to test set')
+        # Add CoRoT-13 b to the test set
+        test_planets_x = pd.concat([test_planets_x, x_train.loc[['CoRoT-13 b']]], axis=0)
+        test_planets_y = pd.concat([test_planets_y, y_train.loc[['CoRoT-13 b']]], axis=0)
+        # Remove CoRoT-13 b from the training set
+        x_train = x_train.drop(['CoRoT-13 b'])
+        y_train = y_train.drop(labels=['CoRoT-13 b'])
+        print('CoRoT-13 b removed from train set and added it to test set')
+
+    if 'Kepler-75 b' in x_train.index:
+        print('\nRemoving Kepler-75 b from train set and add it to test set')
+        # Add Kepler-75 b to the test set
+        test_planets_x = pd.concat([test_planets_x, x_train.loc[['Kepler-75 b']]], axis=0)
+        test_planets_y = pd.concat([test_planets_y, y_train.loc[['Kepler-75 b']]], axis=0)
+        # Remove Kepler-75 b from the training set
+        x_train = x_train.drop(['Kepler-75 b'])
+        y_train = y_train.drop(labels=['Kepler-75 b'])
+        print('Kepler-75 b removed from train set and added it to test set')
+
+    if 'WASP-17 b' in x_train.index:
+        print('\nRemoving WASP-17 b from train set and add it to test set')
+        # Add WASP-17 b to the test set
+        test_planets_x = pd.concat([test_planets_x, x_train.loc[['WASP-17 b']]], axis=0)
+        test_planets_y = pd.concat([test_planets_y, y_train.loc[['WASP-17 b']]], axis=0)
+        # Remove WASP-17 b from the training set
+        x_train = x_train.drop(['WASP-17 b'])
+        y_train = y_train.drop(labels=['WASP-17 b'])
+        print('WASP-17 b removed from train set and added it to test set')
+
+    if 'Kepler-20 c' in x_train.index:
+        print('\nRemoving Kepler-20 c from train set and add it to test set')
+        # Add Kepler-20 c to the test set
+        test_planets_x = pd.concat([test_planets_x, x_train.loc[['Kepler-20 c']]], axis=0)
+        test_planets_y = pd.concat([test_planets_y, y_train.loc[['Kepler-20 c']]], axis=0)
+        # Remove Kepler-20 c from the training set
+        x_train = x_train.drop(['Kepler-20 c'])
+        y_train = y_train.drop(labels=['Kepler-20 c'])
+        print('Kepler-20 c removed from train set and added it to test set')
+
+    x_train = pd.concat([x_train, X_train_sol], axis=0)
     y_train = pd.concat([y_train, y_train_sol], axis=0)
-    X_test = pd.concat([X_test, X_test_sol], axis=0)
-    y_test = pd.concat([y_test, y_test_sol], axis=0)
+    x_test = pd.concat([x_test, test_planets_x, X_test_sol], axis=0)
+    y_test = pd.concat([y_test, test_planets_y, y_test_sol], axis=0)
+    # print('y_test: ', np.shape(y_test))
+    # print(y_test)
+    # Tranform y_test into list such that shape is (193,) otherwise pearson doesn't work
+    y_test.rename(columns={0: 'true_rad'}, inplace=True)
+    # print('y_test_col: ', y_test.columns)
+    y_test_list = y_test.true_rad.values.tolist()
+    # print('y_test_list: ', np.shape(y_test_list))
+    # print(y_test_list)
 
-    try:
-        # Outliers in the sample
-        # Remove HATS-12 b from the training set
-        X_test = X_test.drop(['HATS-12 b'])
-        y_test = y_test.drop(labels=['HATS-12 b'])
-        print('\nHATS-12 b removes from test set\n')
-    except KeyError:
-        pass
-    try:
-        # Remove K2-95 b from the training set
-        X_train = X_train.drop(['K2-95 b'])
-        y_train = y_train.drop(labels=['K2-95 b'])
-        print('\nK2-95 b removes from training set\n')
-    except KeyError:
-        pass
-    try:
-        # Remove Kepler-11 g from the training set
-        X_train = X_train.drop(['Kepler-11 g'])
-        y_train = y_train.drop(labels=['Kepler-11 g'])
-        print('\nKepler-11 g removes from training set\n')
-    except KeyError:
-        pass
+    # try:
+    #     # Outliers in the sample
+    #     # Remove HATS-12 b from the training set
+    #     # x_test = x_test.drop(['HATS-12 b'])
+    #     # y_test = y_test.drop(labels=['HATS-12 b'])
+    #     # print('\nHATS-12 b removes from test set\n')
+    # except KeyError:
+    #     pass
+    # try:
+    #     # Remove K2-95 b from the training set
+    #     # x_train = x_train.drop(['K2-95 b'])
+    #     # y_train = y_train.drop(labels=['K2-95 b'])
+    #     # print('\nK2-95 b removes from training set\n')
+    # except KeyError:
+    #     pass
+    # try:
+    #     # Remove Kepler-11 g from the training set
+    #     # x_train = x_train.drop(['Kepler-11 g'])
+    #     # y_train = y_train.drop(labels=['Kepler-11 g'])
+    #     # print('\nKepler-11 g removes from training set\n')
+    # except KeyError:
+    #     pass
 
-    train_test_values = [X_train.values, X_test.values,
+    train_test_values = [x_train.values, x_test.values,
                          y_train.values, y_test.values]
-    train_test_sets = [X_train, X_test, y_train, y_test]
+    train_test_sets = [x_train, x_test, y_train, y_test]
 
     # Fitting the hyperparameters of the random forest model
     # with the grid search method
@@ -536,7 +636,7 @@ def random_forest_regression(dataset,
                           cv=3, verbose=1, n_jobs=-1)
 
         # Fitting training set - finding best hyperparameters
-        rf.fit(X_train, y_train)
+        rf.fit(x_train, y_train)
 
         # Best hyperparameters found by the grid search
         print(rf.best_params_)
@@ -567,22 +667,24 @@ def random_forest_regression(dataset,
 
     # Fit the best random forest model to the training set
     # ----------------------------------------------------
-    regr.fit(X_train, y_train)
+    regr.fit(x_train, y_train)
 
     # Predict the radius for the training and testing sets
-    y_train_predict = regr.predict(X_train)
-    y_test_predict = regr.predict(X_test)
+    y_train_predict = regr.predict(x_train)
+    y_test_predict = regr.predict(x_test)
+    # print('y_test_predict: ', np.shape(y_test_predict))
+    # print(y_test_predict)
 
     # Scores of the random forest
-    test_score = r2_score(y_test, y_test_predict)
-    pearson = pearsonr(y_test, y_test_predict)
+    test_score = r2_score(y_test_list, y_test_predict)
+    pearson = pearsonr(y_test_list, y_test_predict)
     print(f'Test set, R-2 score: {test_score:>5.3}')
     print(f'\nTest set, Pearson correlation: {pearson[0]:.3}')
 
     # Mean squared errors of the train and test set
     print('Root mean squared errors')
     print('Train set: ', np.sqrt(np.mean((y_train - y_train_predict) ** 2)),
-          '\nTest set:  ', np.sqrt(np.mean((y_test - y_test_predict) ** 2)))
+          '\nTest set:  ', np.sqrt(np.mean((y_test_list - y_test_predict) ** 2)))
 
     # Feature importance
     name_features = dataset.columns.tolist()
@@ -608,25 +710,36 @@ def computing_errorbars(regr, dataset_errors, train_test_sets):
 
     # Original train and test sets
     X_train, X_test, y_train, y_test = train_test_sets
-
+    # print('X_train: ', np.shape(X_train))
+    # print('X_test: ', np.shape(X_test))
+    # print('y_train', np.shape(y_train))
+    # print('y_test', np.shape(y_test))
     # Cross matching the Test set with the dataset with errors
     # to compute error bars for the exoplanets which have input errors
     dataset_errors = dataset_errors.loc[X_test.index.values.tolist()]
+    # print('dataset_errors: ', np.shape(dataset_errors))
     # Remove an exoplanet in case there is still a NaN
     # in one of the feature
     dataset_errors = dataset_errors.dropna(axis=0, how='any')
-
+    # print('dataset_errors: ', np.shape(dataset_errors))
+    # print(np.shape(dataset_errors))
     # Matrix with all the errors on the different features
     features_errors = dataset_errors.iloc[:, :-2].values
+    # print('features_errors: ', features_errors)
+    # print('features_errors: ', np.shape(features_errors))
     # Radius vector
     radii_test = dataset_errors.iloc[:, -2].values
+    # print('radii_test: ', np.shape(radii_test))#, radii_test)
     # Error on the radius vector
     radii_test_input_error = dataset_errors.iloc[:, -1].values
+    # print('radii_test_input_error: ', np.shape(radii_test_input_error))#, radii_test_input_error)
 
     # Empty vector to store the error bars
     radii_test_output_error = np.zeros_like(radii_test_input_error)
+    # print('radii_test_output_error: ', np.shape(radii_test_output_error))
+    # print('radii_test.size', radii_test.size)
     for i in range(radii_test.size):
-        # print(i)
+        # print('i', i)
         # from each line in X_train generate new values for all parameters
         # with a multivariate gaussian which has
         # a vector of mean with the value columns and std with the error column
@@ -634,6 +747,12 @@ def computing_errorbars(regr, dataset_errors, train_test_sets):
         # >> takes the features : [mass0, temp_eq0, ...]
         # std_errors_0 = features_errors[0,1:-1:2]
         # >> takes the errors : [mass_err0, temp_eq_err0, ...]
+        # print('features_errors[i, ::2]', features_errors[i, ::2])
+        # print('features_errors[i, ::2]', np.shape(features_errors[i, ::2]))
+        # print('features_errors[i, 1::2]', np.shape(features_errors[i, 1::2]))
+        # print('mvn', mvn(features_errors[i, ::2],
+        #                         np.diag(features_errors[i, 1::2]),
+        #                         allow_singular=True))
 
         rerr = regr.predict(mvn(features_errors[i, ::2],
                                 np.diag(features_errors[i, 1::2]),
@@ -750,23 +869,27 @@ def predict_radius(my_name=np.array(['My planet b']),
             print('Planetary mass is given in Earth mass')
 
         # Computing equilibrium temperature
-        if 'temp_eq' in my_param:
-            my_param_name = fd.add_temp_eq_error_dataset(my_param)
+        # my_param = fd.add_temp_eq_error_dataset(my_param)
         # Computing stellar luminosity
-        if 'star_luminosity' in my_param:
-            my_param_name = fd.add_star_luminosity_error_dataset(my_param)
+        my_param = fd.add_star_luminosity_error_dataset(my_param)
         # Computing insolation
-        if 'insolation' in my_param:
-            my_param_name = fd.add_insolation_dataset(my_param)
+        my_param = fd.add_insolation_error_dataset(my_param)
 
         # Planet with error bars
         print('Planet with error bars\n', my_param.iloc[0])
 
+        my_param_name = ['mass', 'mass_error',
+                         'semi_major_axis', 'semi_major_axis_error',
+                         'star_teff', 'star_teff_error',
+                         'star_radius', 'star_radius_error',
+                         'star_mass', 'star_mass_error']
         # Radius error prediction
         my_pred_planet = my_param[my_param_name]
 
         # Feature / feature error
         features_with_errors = my_pred_planet.iloc[0].values.reshape(1, -1)
+        print('features_with_errors[0, ::2]: ', features_with_errors[0, ::2])
+        print('features_with_errors[0, 1::2]: ', features_with_errors[0, 1::2])
         radius_error = regr.predict(mvn(features_with_errors[0, ::2],
                                         np.diag(features_with_errors[0, 1::2]),
                                         allow_singular=True).rvs(1000)).std()
@@ -794,8 +917,8 @@ def predict_radius(my_name=np.array(['My planet b']),
         if 'temp_eq' in my_param:
             my_param = fd.add_temp_eq_dataset(my_param)
         # Computing stellar luminosity
-        if 'star_luminosity' in my_param:
-            my_param = fd.add_star_luminosity_dataset(my_param)
+        # if 'star_luminosity' in my_param:
+        #     my_param = fd.add_star_luminosity_dataset(my_param)
         # Select features
         my_pred_planet = my_param[my_param_name]
         # Radius prediction
@@ -808,13 +931,6 @@ def predict_radius(my_name=np.array(['My planet b']),
 
 def plot_dataset(dataset, predicted_radii=[], rv=False):
     if not rv:
-        try:
-            # Remove outlier planets
-            dataset = dataset.drop(['Kepler-11 g'])
-            dataset = dataset.drop(['K2-95 b'])
-            dataset = dataset.drop(['HATS-12 b'])
-        except KeyError:
-            pass
 
         # Plot the original dataset
         fig = plt.figure()
@@ -1049,20 +1165,10 @@ def plot_validation_curves(regr, dataset, name='features',
 
 
 def plot_LIME_predictions(regr, dataset, train_test_sets,
+                          feature_name,
                           planets=[],
                           my_pred_planet=pd.DataFrame(),
-                          my_true_radius=None,
-                          feature_name=['mass',
-                                        'semi_major_axis',
-                                        'orbital_period',
-                                        'temp_eq',
-                                        'star_luminosity',
-                                        'insolation',
-                                        'star_age',
-                                        'star_radius',
-                                        'star_teff',
-                                        'star_mass',
-                                        'radius']):
+                          my_true_radius=None):
     '''
     Compute and plot the LIME explanation for one or several radius predictions
     made by the random forest model
@@ -1085,7 +1191,9 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
     '''
 
     # Data
-    X_train, X_test, y_train, y_test = train_test_sets
+    x_train, x_test, y_train, y_test = train_test_sets
+    # load Dataset
+    dataset = dataset[feature_name]
     features = dataset.iloc[:, :-1].values  # mass, teq, etc
     labels = dataset.iloc[:, -1].values  # radius
 
@@ -1096,7 +1204,7 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
     cat_features = np.argwhere(nb_unique_obj_in_features <= 10).flatten()
 
     # LIME explainer
-    explainer = lime.lime_tabular.LimeTabularExplainer(X_train.values,
+    explainer = lime.lime_tabular.LimeTabularExplainer(x_train.values,
                                                        feature_names=feature_name,
                                                        class_names=['radius'],
                                                        categorical_features=cat_features,
@@ -1152,23 +1260,41 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         return exp
 
     elif not planets:
+        # print('Checking if some planets are in dataset:\n')
+        # if 'TRAPPIST-1 g' in x_test.index:
+        #     print('TRAPPIST-1 g in dataset')
+        # if 'HATS-35 b' in x_test.index:
+        #     print('HATS-35 b in dataset')
+        # if 'CoRoT-13 b' in x_test.index:
+        #     print('CoRoT-13 b in dataset')
+        # if 'Kepler-75 b' in x_test.index:
+        #     print('Kepler-75 b in dataset')
+        # if 'WASP-17 b' in x_test.index:
+        #     print('WASP-17 b in dataset')
+        # if 'Kepler-20 c' in x_test.index:
+        #     print('Kepler-20 c in dataset')
+
+        planets.append(np.where(x_test.index == 'TRAPPIST-1 g')[0][0])
+        planets.append(np.where(x_test.index == 'HATS-35 b')[0][0])
+        planets.append(np.where(x_test.index == 'CoRoT-13 b')[0][0])
+        planets.append(np.where(x_test.index == 'Kepler-75 b')[0][0])
+        planets.append(np.where(x_test.index == 'WASP-17 b')[0][0])
+        planets.append(np.where(x_test.index == 'Kepler-20 c')[0][0])
+    else:
         pass
-        # planets.append(np.where(X_test.index == 'TRAPPIST-1 g')[0][0])
-        # planets.append(np.where(X_test.index == 'HATS-35 b')[0][0])
-        # planets.append(np.where(X_test.index == 'CoRoT-13 b')[0][0])
-        # planets.append(np.where(X_test.index == 'Kepler-75 b')[0][0])
-        # planets.append(np.where(X_test.index == 'WASP-17 b')[0][0])
-        # planets.append(np.where(X_test.index == 'Kepler-20 c')[0][0])
-    # else:
-    #     pass
 
     # Plotting
     fig, axs = plt.subplots(3, 2, constrained_layout=True, figsize=(15, 7.2712643025))
     axs = axs.flatten()
     for j, planet in enumerate(planets):
-        print('\n', X_test.iloc[planet])
-        print('True radius: ', y_test[planet])
-        exp = explainer.explain_instance(X_test.values[planet],
+        print('\nj: ', j)
+        print('\nplanet: ', planet)
+        # try:
+        #     print('\nx_test', planet, ': ', x_test.iloc[planet])
+        # print('\ny_test: ', y_test)
+        print('\nTrue radius: ', y_test.iloc[planet])
+        # print('\nx_test.values[planet]: ', x_test.values[planet])
+        exp = explainer.explain_instance(x_test.values[planet],
                                          regr.predict, num_features=7)
         lime_radius = exp.local_pred
         rf_radius = exp.predicted_value
@@ -1189,21 +1315,24 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         axs[j].get_yaxis().set_visible(False)
         axs[j].set_xlabel('Weight')
         axs[j].set_ylabel('Feature')
-        axs[j].set_title(X_test.iloc[planet].name, loc='right')
+        axs[j].set_title(x_test.iloc[planet].name, loc='right')
         rects = axs[j].barh(pos, vals, align='center', color=colors, alpha=0.5)
+
         for i, rect in enumerate(rects):
             # if rf_radius > 12.0:
             axs[j].text(axs[j].get_xlim()[0] + 0.03, rect.get_y() + 0.2, str(names[i]))
 
         # Text box
         textstr = '\n'.join((
-            r'True radius=%.2f$R_\oplus$' % (y_test[planet],),
+            r'True radius=%.2f$R_\oplus$' % (y_test.iloc[planet],),
             r'RF radius=%.2f$R_\oplus$' % (rf_radius,),
             r'LIME radius=%.2f$R_\oplus$' % (lime_radius,)))
         # place a text box in upper left in axes coords
         axs[j].text(0.68, 0.1, textstr,
                     bbox={'boxstyle': 'round', 'facecolor': 'white'},
                     transform=axs[j].transAxes)
+        # except KeyError:
+        #     pass
 
     # Plot the Mass Radius Temp eq relation
     # with LIME predicted planets in circles
@@ -1211,21 +1340,21 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
     ax = fig.add_subplot(111)
     ax.set_xscale('log')
     ax.set_yscale('log')
-    if 'temp_eq' in X_test.columns:
-        size = X_test.temp_eq.values
-        plt.scatter(X_test.mass.values, y_test.values,
+    if 'temp_eq' in x_test.columns:
+        size = x_test.temp_eq.values
+        plt.scatter(x_test.mass.values, y_test.values,
                     c=size, cmap=cm.magma_r)
         plt.colorbar(label=r'Equilibrium temperature (K)')
     else:
-        plt.scatter(X_test.mass.values, y_test.values, c='k', alpha=0.5)
-    plt.xlabel(r'Mass ($M_\oplus$)')
+        plt.scatter(x_test.mass.values, y_test.values, c='k', alpha=0.5)
+    plt.xlabel(r'Mass ($M_\oplus$    dataset_errors = bem.load_dataset_errors())')
     plt.ylabel(r'Radius ($R_\oplus$)')
     plt.legend()
     for planet in planets:
-        plt.plot(X_test.iloc[planet].mass,
+        plt.plot(x_test.iloc[planet].mass,
                  y_test.values[planet], 'o',
                  mfc='none', ms=12,
-                 label=X_test.iloc[planet].name)
+                 label=x_test.iloc[planet].name)
         plt.legend()
     # return exp
 
@@ -1286,7 +1415,6 @@ def write_data(my_features, my_params, my_planets, file_path='', file_name='para
         f.close
 
     return None
-
 
 # def create_dict(my_list):
 #     my_dict = {}

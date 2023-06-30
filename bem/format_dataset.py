@@ -132,7 +132,24 @@ def add_insolation_dataset(dataset):
                   in zip(dataset.star_luminosity, dataset.semi_major_axis)]
     dataset.insert(2, 'insolation', insolation)
     return dataset
+def add_insolation_error_dataset(dataset):
+    """
 
+    :param dataset:
+    :return:
+    """
+
+    insolation = [ufloat(l_star, abs(l_star_error)) *
+              1 / ufloat(a, abs(a_error))
+              for l_star, l_star_error, a, a_error
+              in zip(dataset.star_luminosity, dataset.star_luminosity_error,
+                     dataset.semi_major_axis, dataset.semi_major_axis_error)]
+    insolation_value = [ins.nominal_value for ins in insolation]
+    insolation_error = [ins.s for ins in insolation]
+    dataset.insert(2, 'insolation_error', insolation_error)
+    dataset.insert(2, 'insolation', insolation_value)
+
+    return dataset
 
 def add_n_planets_syst_dataset(dataset):
     '''
