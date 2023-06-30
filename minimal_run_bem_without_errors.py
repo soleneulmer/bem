@@ -12,63 +12,55 @@ import corner
 #
 # Features wanted as parameters and features needed to do calculations to create new features in load_dataset
 # For the features needed to do calculations check format_dataset.py
-features_load_dataset_input = ['mass', 'orbital_period', 'eccentricity', 'semi_major_axis',
+features_load_dataset_input = ['mass', 'semi_major_axis', 'eccentricity', 'n_planets',
                                'star_mass', 'star_radius', 'star_teff', 'star_metallicity',
                                'radius']
 
 # Features wanted as parameters in load_dataset:
-features_load_dataset_output = ['mass', 'orbital_period', 'eccentricity',
+features_load_dataset_output = ['mass', 'semi_major_axis', 'insolation', 'eccentricity', 'n_planets',
                                 'star_mass', 'star_radius', 'star_teff', 'star_metallicity',
                                 'radius']
 
 # Features wanted as parameters and features needed to do calculations to create new features in load_dataset_RV
 # For the features needed to do calculations check format_dataset.py
-features_load_dataset_RV_input = ['mass', 'mass_error_min', 'mass_error_max',
-                                  'orbital_period', 'eccentricity', 'semi_major_axis',
+features_load_dataset_RV_input = ['mass', 'mass_error_min', 'mass_error_max', 'semi_major_axis', 'eccentricity', 'n_planets',
                                   'star_mass', 'star_radius', 'star_teff', 'star_metallicity']
 
 # Features wanted as parameters in load_dataset_RV:
-features_load_dataset_RV_output = ['mass', 'orbital_period', 'eccentricity',
+features_load_dataset_RV_output = ['mass', 'semi_major_axis', 'insolation', 'eccentricity', 'n_planets',
                                    'star_mass', 'star_radius', 'star_teff', 'star_metallicity']
 
 # Features wanted as parameters and features needed to do calculations to create new features in load_dataset_error
 # Needs to be formatted the following way:
 # ['param', 'param_error_min', 'param_error_max', ...]
 # Otherwise dataset_exo = dataset_exo.dropna(subset=features_input[::3]) will not work
-features_load_dataset_errors_input = ['mass', 'mass_error_min', 'mass_error_max',
-                                      'semi_major_axis', 'semi_major_axis_error_min', 'semi_major_axis_error_max',
-                                      'eccentricity', 'eccentricity_error_min', 'eccentricity_error_max',
-                                      'star_mass', 'star_mass_error_min', 'star_mass_error_max',
-                                      'star_radius', 'star_radius_error_min', 'star_radius_error_max',
-                                      'star_teff', 'star_teff_error_min', 'star_teff_error_max',
-                                      'radius', 'radius_error_min', 'radius_error_max']
+features_load_dataset_errors_input = ['mass', 'mass_error_min', 'mass_error_max', 'semi_major_axis',
+                                      'semi_major_axis_error_min', 'semi_major_axis_error_max', 'eccentricity',
+                                      'eccentricity_error_min', 'eccentricity_error_max', 'star_mass',
+                                      'star_mass_error_min', 'star_mass_error_max', 'star_radius',
+                                      'star_radius_error_min', 'star_radius_error_max', 'star_teff',
+                                      'star_teff_error_min', 'star_teff_error_max', 'radius', 'radius_error_min',
+                                      'radius_error_max']
 
 # Features wanted as parameters for the solar system and features needed to do calculations to create new features in
 # load_dataset_error
 # Needs to be formatted the following way:
 # ['param', 'param_error', ...]
 # Otherwise dataset_solar_system = dataset_solar_system.dropna(subset=features_ss_input[::2]) will not work
-features_load_dataset_errors_ss_input = ['mass', 'mass_error',
-                                         'semi_major_axis', 'semi_major_axis_error',
-                                         'eccentricity', 'eccentricity_error',
-                                         'star_mass', 'star_mass_error',
-                                         'star_radius', 'star_radius_error',
-                                         'star_teff', 'star_teff_error',
-                                         'radius', 'radius_error']
+features_load_dataset_errors_ss_input = ['mass', 'mass_error', 'semi_major_axis', 'semi_major_axis_error',
+                                         'eccentricity', 'eccentricity_error', 'star_mass', 'star_mass_error',
+                                         'star_radius', 'star_radius_error', 'star_teff', 'star_teff_error', 'radius',
+                                         'radius_error']
 
 # Features wanted as exit parameters load_dataset_error
 # Needs to be formatted the following way:
 # ['param', 'param_error', ...]
-features_load_dataset_errors_output = ['mass', 'mass_error',
-                                       'semi_major_axis', 'semi_major_axis_error',
-                                       'eccentricity', 'eccentricity_error',
-                                       'star_mass', 'star_mass_error',
-                                       'star_radius', 'star_radius_error',
-                                       'star_teff', 'star_teff_error',
-                                       'radius', 'radius_error']
+features_load_dataset_errors_output = ['mass', 'mass_error', 'semi_major_axis', 'semi_major_axis_error', 'eccentricity',
+                                       'eccentricity_error', 'star_mass', 'star_mass_error', 'star_radius',
+                                       'star_radius_error', 'star_teff', 'star_teff_error', 'radius', 'radius_error']
 
 # Features wanted as parameters in plot_LIME_predictions:
-features_plot_LIME_predictions = ['mass', 'orbital_period', 'eccentricity',
+features_plot_LIME_predictions = ['mass', 'semi_major_axis', 'insolation', 'eccentricity', 'n_planets',
                                   'star_mass', 'star_radius', 'star_teff', 'star_metallicity',
                                   'radius']
 
@@ -85,7 +77,7 @@ features = {'features_load_dataset_input': features_load_dataset_input,
 # ------------------------------ CHOOSING PARAMETERS ------------------------------ #
 solar = True
 rm_ecc = True
-rm_outliers = 'published_output/ParametersSet5/outliersSet5.pkl'
+rm_outliers = None# 'published_output/Run9ParametersSet/Run9_Parameters_outliers.pkl'
 parameters = {'solar': solar,
               'rm_ecc': rm_ecc,
               'rm_outliers': rm_outliers}
@@ -95,12 +87,22 @@ parameters = {'solar': solar,
 name = ['GJ 357 b']
 
 param_name = ['mass', 'mass_error',
+               'n_planets', 'n_planets_error',
               'eccentricity', 'eccentricity_error',
-              'orbital_period', 'orbital_period_error',
+              'semi_major_axis', 'semi_major_axis_error',
+              'star_metallicity', 'star_metallicity_error',
               'star_teff', 'star_teff_error',
               'star_radius', 'star_radius_error',
-              'star_mass', 'star_mass_error',
-              'star_metallicity', 'star_metallicity_error']
+              'star_mass', 'star_mass_error']
+
+param = [[0.006566, 0.00101,
+          3, 1,
+          0.047, 0.059,
+          0.033, 0.001,
+          -0.12, 0.16,
+          3505.0, 51.0,
+          0.337, 0.015,
+          0.342, 0.011]]
 
 # param_name = ['mass', 'mass_error',
 #               'eccentricity', 'eccentricity_error',
@@ -120,14 +122,6 @@ param_name = ['mass', 'mass_error',
 #           5, 1,
 #           0.342, 0.011]]
 
-param = [[0.006566, 0.00101,
-          0.047, 0.059,
-          3.93086, 4E-05,
-          3505.0, 51.0,
-          0.337, 0.015,
-          0.342, 0.011,
-          -0.12, 0.16]]
-
 jupiter_mass = True,
 error_bar = True
 # ------------------------------ END CHOOSING PLANET TO PREDICT RADIUS ------------------------------ #
@@ -140,7 +134,8 @@ dataset = bem.load_dataset(feature_names_input=features_load_dataset_input,
                            rm_outliers=rm_outliers)
 
 # write some data to a file
-bem.write_data(features, parameters, len(dataset), file_path='published_output/', file_name='Parameters.txt')
+bem.write_data(features, parameters, len(dataset), file_path='published_output/Run9ParametersSet/',
+               file_name='Parameters.txt')
 
 # Corner plot to see the correlation of parameters
 # figure = corner.corner(dataset,
@@ -185,7 +180,8 @@ bem.plot_validation_curves(regr, dataset, name='tree', save=True, fit=True)
 bem.plot_validation_curves(regr, dataset, name='depth', save=True, fit=True)
 
 # Explain the RF predictions
-exp = bem.plot_LIME_predictions(regr, dataset, train_test_sets)
+exp = bem.plot_LIME_predictions(regr, dataset, train_test_sets,
+                                feature_name=features_load_dataset_output)
 
 # Predict a new radius
 # example given with GJ 357 b
@@ -200,8 +196,8 @@ radius, my_pred_planet = bem.predict_radius(my_name=np.array(name),
 
 # Plot LIME explanation for the newly predicted radius
 exp = bem.plot_LIME_predictions(regr, dataset, train_test_sets,
+                                feature_name=features_plot_LIME_predictions,
                                 my_pred_planet=my_pred_planet,
-                                my_true_radius=1.166,
-                                feature_name=features_plot_LIME_predictions)
+                                my_true_radius=1.166)
 
 plt.show()
