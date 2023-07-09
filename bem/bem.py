@@ -35,13 +35,13 @@ __all__ = [
 
 here = os.path.abspath(os.path.dirname(__file__))
 published_dir = os.path.join(here, '/home/antonin/Documents/1-Master/Laboratory/APLII/bem/published_output/',
-                             'Errorbars')
-if os.path.exists(os.path.join(published_dir, 'r2_0.88_2023-06-30_17:55.pkl')):
+                             'BestParam')
+if os.path.exists(os.path.join(published_dir, 'r2_0.87_2023-07-07_13:35.pkl')):
     pass
 else:
-    published_dir = os.path.join(sys.prefix, 'Errorbars')
+    published_dir = os.path.join(sys.prefix, 'BestParam')
 
-saved_pickle_model = os.path.join(published_dir, 'r2_0.88_2023-06-30_17:55.pkl')
+saved_pickle_model = os.path.join(published_dir, 'r2_0.87_2023-07-07_13:35.pkl')
 
 
 def load_dataset(
@@ -157,12 +157,13 @@ def load_dataset(
     if 'temp_eq' in feature_names_output:
         print('Computing planet\'s equilibrium temperature')
         dataset = fd.add_temp_eq_dataset(dataset)
-    # if 'star_luminosity' in feature_names_output:
-    print('Computing stellar luminosity')
-    dataset = fd.add_star_luminosity_dataset(dataset)
-    # if 'insolation' in feature_names_output:
-    print('Computing insolation')
-    dataset = fd.add_insolation_dataset(dataset)
+    if 'star_luminosity' in feature_names_output:
+        print('Computing stellar luminosity')
+        dataset = fd.add_star_luminosity_dataset(dataset)
+    if 'insolation' in feature_names_output:
+        print('Computing insolation')
+        dataset = fd.add_star_luminosity_dataset(dataset)
+        dataset = fd.add_insolation_dataset(dataset)
     # Convert some columns to float (because they are objects for some reason)
     if 'star_age' in feature_names_output:
         dataset['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
@@ -270,6 +271,8 @@ def load_dataset_errors(
     # Importing exoplanet dataset
     cat_exoplanet = os.path.join(published_dir, cat_exoplanet)
     dataset_exo = pd.read_csv(cat_exoplanet, index_col=0)
+    print('Adding the number of planets in every system to the dataset')
+    dataset_exo = fd.add_n_planets_syst_error_dataset(dataset_exo)
     dataset_exo = dataset_exo[features_input]
 
     # Importing Solar system dataset
@@ -350,6 +353,11 @@ def load_dataset_errors(
     if 'star_luminosity' in features_output:
         print('Computing stellar luminosity')
         dataset = fd.add_star_luminosity_error_dataset(dataset)
+    if 'insolation' in features_output:
+        print('Computing stellar luminosity')
+        dataset = fd.add_star_luminosity_error_dataset(dataset)
+        print('Computing insolation')
+        dataset = fd.add_insolation_error_dataset(dataset)
 
     dataset = dataset[features_output]
 
@@ -451,12 +459,13 @@ def load_dataset_RV(
     if 'temp_eq' in features_names_output:
         print('Computing planet\'s equilibrium temperature')
         dataset_radial = fd.add_temp_eq_dataset(dataset_radial)
-    # if 'star_luminosity' in features_names_output:
-    print('Computing stellar luminosity')
-    dataset_radial = fd.add_star_luminosity_dataset(dataset_radial)
-    # if 'insolation' in features_names_output:
-    print('Computing insolation')
-    dataset_radial = fd.add_insolation_dataset(dataset_radial)
+    if 'star_luminosity' in features_names_output:
+        print('Computing stellar luminosity')
+        dataset_radial = fd.add_star_luminosity_dataset(dataset_radial)
+    if 'insolation' in features_names_output:
+        print('Computing insolation')
+        dataset_radial = fd.add_star_luminosity_dataset(dataset_radial)
+        dataset_radial = fd.add_insolation_dataset(dataset_radial)
     # Convert some columns to float (because they are objects for some reason)
     if 'star_age' in features_names_output:
         dataset_radial['star_age'] = pd.to_numeric(dataset['star_age'], errors='coerce')
@@ -627,6 +636,7 @@ def random_forest_regression(dataset,
     # with the grid search method
     # ------------------------------------------------------
     if fit:
+        # Ulmer-Moll hyperparameters
         # Setting up the grid of hyperparameters
         rf = GridSearchCV(RandomForestRegressor(),
                           param_grid={'n_estimators': np.arange(80, 200),
@@ -634,6 +644,15 @@ def random_forest_regression(dataset,
                                       'max_features': np.arange(3, 6),
                                       'min_samples_split': np.arange(4, 5)},
                           cv=3, verbose=1, n_jobs=-1)
+        #
+        # Mousavi-Sadr hyperparameters
+        # Setting up the grid of hyperparameters
+        # rf = GridSearchCV(RandomForestRegressor(),
+        #                   param_grid={'n_estimators': np.arange(80, 200),
+        #                               'max_depth': np.arange(0, 10),
+        #                               'max_features': np.arange(2, 6),
+        #                               'min_samples_split': np.arange(4, 5)},
+        #                   cv=3, verbose=1, n_jobs=-1)
 
         # Fitting training set - finding best hyperparameters
         rf.fit(x_train, y_train)
@@ -938,6 +957,7 @@ def plot_dataset(dataset, predicted_radii=[], rv=False):
         ax.set_xscale('log')
         ax.set_yscale('log')
 
+
         if 'temp_eq' in dataset.columns:
             plt.scatter(dataset.mass, dataset.radius, c=dataset.temp_eq,
                         cmap=cm.magma_r, s=4, label='Verification sample')
@@ -960,6 +980,10 @@ def plot_dataset(dataset, predicted_radii=[], rv=False):
         ax = fig.add_subplot(111)
         ax.set_xscale('log')
         ax.set_yscale('log')
+
+        plt.ylim([1e0, 2.5e1])
+        plt.xlim([1e-2, 4e4])
+
 
         if 'temp_eq' in dataset.columns:
             plt.scatter(dataset.mass, predicted_radii, c=dataset.temp_eq,
@@ -1347,7 +1371,7 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         plt.colorbar(label=r'Equilibrium temperature (K)')
     else:
         plt.scatter(x_test.mass.values, y_test.values, c='k', alpha=0.5)
-    plt.xlabel(r'Mass ($M_\oplus$    dataset_errors = bem.load_dataset_errors())')
+    plt.xlabel(r'Mass ($M_\oplus$)')
     plt.ylabel(r'Radius ($R_\oplus$)')
     plt.legend()
     for planet in planets:

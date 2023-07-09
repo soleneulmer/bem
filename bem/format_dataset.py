@@ -172,6 +172,24 @@ def add_n_planets_syst_dataset(dataset):
 
     return dataset
 
+def add_n_planets_syst_error_dataset(dataset):
+
+    planet_names = dataset.index.values.tolist()
+
+    star = []
+    for name in planet_names:
+        star.append(name[:-1])
+
+    star_name_n_planet = pd.Series(star).value_counts()
+    n_planets = common_element(star, star_name_n_planet)
+
+    dataset.insert(2, 'n_planets', n_planets)
+    dataset.insert(2, 'n_planets_error_min', 0.)
+    dataset.insert(2, 'n_planets_error_max', 0.)
+    dataset.insert(2, 'n_planets_error', 0.)
+
+    return dataset
+
 def add_weighted_relative_distance(dataset):
     '''
     Computes the mass weigthed relative distance between planets of a same system.
