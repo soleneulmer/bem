@@ -11,33 +11,27 @@ import matplotlib.pyplot as plt
 #
 # Features wanted as parameters and features needed to do calculations to create new features in load_dataset
 # For the features needed to do calculations check format_dataset.py
-features_load_dataset_input = ['mass', 'semi_major_axis', 'eccentricity',
-                               'star_mass', 'star_radius', 'star_teff', 'star_metallicity',
-                               'radius']
+features_load_dataset_input = ['mass', 'semi_major_axis', 'eccentricity', 'star_mass', 'star_radius', 'star_teff', 'radius']
 
 # Features wanted as parameters in load_dataset:
-features_load_dataset_output = ['mass', 'semi_major_axis', 'temp_eq',
-                                'star_mass', 'star_radius', 'star_teff', 'star_luminosity',
-                                'radius']
+features_load_dataset_output = ['mass', 'semi_major_axis', 'insolation', 'star_mass', 'star_radius', 'star_teff', 'radius']
 
 # Features wanted as parameters and features needed to do calculations to create new features in load_dataset_RV
 # For the features needed to do calculations check format_dataset.py
-features_load_dataset_RV_input = ['mass_sini', 'mass_sini_error_min', 'mass_sini_error_max', 'semi_major_axis', 'eccentricity',
-                                  'star_mass', 'star_radius', 'star_teff', 'star_metallicity']
+features_load_dataset_RV_input = ['mass_sini', 'mass_sini_error_min', 'mass_sini_error_max', 'semi_major_axis', 'eccentricity', 'star_mass', 'star_radius', 'star_teff']
 
 # Features wanted as parameters in load_dataset_RV:
-features_load_dataset_RV_output = ['mass', 'semi_major_axis', 'temp_eq',
-                                   'star_mass', 'star_radius', 'star_teff', 'star_luminosity']
+features_load_dataset_RV_output = ['mass', 'semi_major_axis', 'insolation', 'star_mass', 'star_radius', 'star_teff']
 
 # Features wanted as parameters and features needed to do calculations to create new features in load_dataset_error
 # Needs to be formatted the following way:
 # ['param', 'param_error_min', 'param_error_max', ...]
 # Otherwise dataset_exo = dataset_exo.dropna(subset=features_input[::3]) will not work
-features_load_dataset_errors_input = ['mass', 'mass_error_min', 'mass_error_max', 'semi_major_axis',
-                                      'semi_major_axis_error_min', 'semi_major_axis_error_max',
+features_load_dataset_errors_input = ['mass', 'mass_error_min', 'mass_error_max',
+                                      'semi_major_axis', 'semi_major_axis_error_min', 'semi_major_axis_error_max',
                                       'eccentricity', 'eccentricity_error_min', 'eccentricity_error_max',
-                                      'star_mass', 'star_mass_error_min', 'star_mass_error_max', 'star_radius',
-                                      'star_radius_error_min', 'star_radius_error_max',
+                                      'star_mass', 'star_mass_error_min', 'star_mass_error_max',
+                                      'star_radius', 'star_radius_error_min', 'star_radius_error_max',
                                       'star_teff', 'star_teff_error_min', 'star_teff_error_max',
                                       'radius', 'radius_error_min', 'radius_error_max']
 
@@ -59,16 +53,15 @@ features_load_dataset_errors_ss_input = ['mass', 'mass_error',
 # ['param', 'param_error', ...]
 features_load_dataset_errors_output = ['mass', 'mass_error',
                                        'semi_major_axis', 'semi_major_axis_error',
-                                       'temp_eq', 'temp_eq_error',
+                                       'insolation', 'insolation_error',
                                        'star_mass', 'star_mass_error',
                                        'star_radius', 'star_radius_error',
                                        'star_teff', 'star_teff_error',
-                                       'star_luminosity', 'star_luminosity_error',
                                        'radius', 'radius_error']
 
 # Features wanted as parameters in plot_LIME_predictions:
-features_plot_LIME_predictions = ['mass', 'semi_major_axis', 'temp_eq',
-                                  'star_mass', 'star_radius', 'star_teff', 'star_luminosity',
+features_plot_LIME_predictions = ['mass', 'semi_major_axis', 'insolation',
+                                  'star_mass', 'star_radius', 'star_teff',
                                   'radius']
 
 features = {'features_load_dataset_input': features_load_dataset_input,
@@ -84,7 +77,9 @@ features = {'features_load_dataset_input': features_load_dataset_input,
 # ------------------------------ CHOOSING PARAMETERS ------------------------------ #
 solar = True
 rm_ecc = True
-rm_outliers = 'published_output/Errorbars/Errorbars_outliers.pkl'
+# rm_outliers = None
+rm_outliers = 'published_output/BestParam2/outliers.pkl'
+
 parameters = {'solar': solar,
               'rm_ecc': rm_ecc,
               'rm_outliers': rm_outliers}
@@ -123,13 +118,13 @@ dataset = bem.load_dataset(feature_names_input=features_load_dataset_input,
                            rm_outliers=rm_outliers)
 
 # write some data to a file
-bem.write_data(features, parameters, len(dataset), file_path='published_output/Errorbars/',
+bem.write_data(features, parameters, len(dataset), file_path='published_output/BestParam2/',
                file_name='Parameters.txt')
 
 # Plot the dataset radius as a function of mass and equilibrium temperature
 bem.plot_dataset(dataset)
 # Build the random forest model and predict radius of the dataset
-regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset, fit=False)
+regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset, fit=True)
 print('regr', np.shape(regr))
 
 # Load exoplanet and solar system planets dataset with uncertainties
