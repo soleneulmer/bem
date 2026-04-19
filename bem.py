@@ -406,7 +406,7 @@ def split_data(dataset):
         features,
         label,
         test_size=0.25,
-        random_state=1
+        random_state=23
     )
 
     default_names = [
@@ -447,7 +447,7 @@ def split_data(dataset):
         features_solar,
         label_solar,
         test_size=0.25,
-        random_state=1
+        random_state=23
     )
 
     X_train = pd.concat([X_train, X_train_solar])
@@ -509,14 +509,14 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
     },
 ]
         rf = RandomizedSearchCV(
-            RandomForestRegressor(random_state=9),
+            RandomForestRegressor(random_state=23),
             param_distributions=params_grid_rf,
             n_iter=40,
             cv=5,
             scoring="r2",
             verbose=1,
             n_jobs=-1,
-            random_state=9,
+            random_state=23,
             return_train_score=True
         )
 
