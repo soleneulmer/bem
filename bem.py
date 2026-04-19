@@ -5,9 +5,11 @@ from sklearn.model_selection import ShuffleSplit
 from sklearn.model_selection import learning_curve
 from sklearn.model_selection import validation_curve
 from sklearn.ensemble import RandomForestRegressor 
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, root_mean_squared_error
 from scipy.stats import multivariate_normal as mvn
 from scipy.stats import pearsonr
+from lightgbm import LGBMRegressor
+from xgboost import XGBRegressor
 import pandas as pd
 import datetime
 import os
@@ -29,7 +31,7 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
                                 'eccentricity', 'star_metallicity',
                                 'star_radius', 'star_teff',
                                 'star_mass', 'star_metallicity', 'radius'],
-                remove_bad_planets=True,
+                remove_shit_planets=True,
                 solar=True):
     """
     Select exoplanet in the catalogue which have mass and radius measurements
@@ -40,9 +42,7 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
     cat_exoplanet: CSV file from exoplanet.eu
     cat_solar: CSV file from Planetary sheet
     feature_names: list of features to select in the dataset.
-    remove_bad_planets: txt file with the names of the exoplanets we have left
-                        out of the dataset. The reason for removing these 
-                        planets are based on their uncertainties.
+
 
     Returns:
     dataset_exo = pandas dataframe with exoplanets with mass & radius 
@@ -68,13 +68,13 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
 
     #We remove planets with the otegi et al 2020 selection and when the error
     # is bigger then the value itself.
-    if remove_bad_planets:
+    if remove_shit_planets:
         shit_planet = pd.read_csv('data/shit_planets.txt', sep='\t', header=None, index_col=0)
         for planet in shit_planet.index:
             if planet in dataset_exo.index:
                 dataset_exo = dataset_exo.drop(labels=planet)
     else:
-        print("No bad planets removed")
+        print("No shit planets removed")
 
     # Remove planets with NaN's
     dataset_exo = dataset_exo.dropna(axis=0, how='any')
@@ -120,7 +120,6 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
 
 def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv',
                         cat_solar="data/solar_system_planets_catalog.csv",
-                        remove_bad_planets=True,
                         reference_dataset=None, solar=True):
     """
     Select exoplanet in the catalogue which have uncertainty measurements as 
@@ -134,12 +133,6 @@ def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_
     Input:
     cat_exoplanet = CSV file from exoplanet.eu
     cat_solar = CSV file from planetary sheet.
-    remove_bad_planets: txt file with the names of the exoplanets we have left
-                        out of the dataset. The reason for removing these 
-                        planets are based on their uncertainties.
-    reference_dataset: dataset that can be used in order to only use planets 
-                       that you use in the original dataset from the 
-                       load_dataset() function. 
     
     Returns:
     dataset_exo = pandas dataframe with exoplanets with mass & radius measurements
@@ -192,13 +185,7 @@ def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_
                                                                'star_mass',
                                                                'star_teff',
                                                                'radius'])
-    if remove_bad_planets:
-        shit_planet = pd.read_csv('data/shit_planets.txt', sep='\t', header=None, index_col=0)
-        for planet in shit_planet.index:
-            if planet in dataset_exo.index:
-                dataset_exo = dataset_exo.drop(labels=planet)
-    else:
-        print("No bad planets removed")
+
     # Replace inf by NaN
     dataset_exo = dataset_exo.replace([np.inf, -np.inf], np.nan)
 
@@ -387,79 +374,111 @@ def load_dataset_RV(cat_exoplanet="data/exoplanet.eu_catalog_20-01-26_15_03_11.c
 
     return dataset_radial
 
-def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
-    """
-    We gonna do some random forest regression.
-    """
 
-    # np.int = int needed, otherwise we will get the same error that does allow
-    # us to continue, but it prints the error everytime and that consumes a lot
-    # of time. 
-    np.int = int
+def split_data(dataset):
+    """
+    Create one consistent train/test split for both exoplanets and solar-system
+    planets, while forcing a few named planets into the test set.
+
+    Returns:
+        features_needed
+        X_train, X_test, y_train, y_test
+        train_test_values
+        train_test_sets
+    """
     dataset_exo = dataset[:-8]
     dataset_solar = dataset[-8:]
 
-    features_needed = ['mass', 'semi_major_axis', 'temp_eq', 'star_luminosity', 'star_radius', 'star_teff', 'star_mass']
+    features_needed = [
+        'mass',
+        'semi_major_axis',
+        'temp_eq',
+        'star_luminosity',
+        'star_radius',
+        'star_teff',
+        'star_mass'
+    ]
 
     features = dataset_exo[features_needed]
     label = dataset_exo['radius']
 
-    X_train, X_test, y_train, y_test = train_test_split(features,
-                                                        label,
-                                                        test_size = 0.25,
-                                                        random_state = 23)
+    X_train, X_test, y_train, y_test = train_test_split(
+        features,
+        label,
+        test_size=0.25,
+        random_state=1
+    )
+
+    default_names = [
+        'K2-123 b',
+        'HATS-35 b',
+        'CoRoT-13 b',
+        'Kepler-75 b',
+        'WASP-17 b',
+        'Kepler-20 Ac'
+    ]
+
+    for name in default_names:
+        if name in X_train.index and name not in X_test.index:
+            X_test = pd.concat([X_test, X_train.loc[[name]]])
+            y_test = pd.concat([y_test, y_train.loc[[name]]])
+
+            X_train = X_train.drop(index=name)
+            y_train = y_train.drop(index=name)
+
+            swap_candidates = [
+                idx for idx in X_test.index
+                if idx not in default_names and idx != name
+            ]
+
+            if len(swap_candidates) > 0:
+                swap_name = swap_candidates[0]
+
+                X_train = pd.concat([X_train, X_test.loc[[swap_name]]])
+                y_train = pd.concat([y_train, y_test.loc[[swap_name]]])
+
+                X_test = X_test.drop(index=swap_name)
+                y_test = y_test.drop(index=swap_name)
 
     features_solar = dataset_solar[features_needed]
     label_solar = dataset_solar['radius']
 
     X_train_solar, X_test_solar, y_train_solar, y_test_solar = train_test_split(
-        features_solar, label_solar, test_size=0.25, random_state=23
+        features_solar,
+        label_solar,
+        test_size=0.25,
+        random_state=1
     )
 
-
     X_train = pd.concat([X_train, X_train_solar])
-    X_test  = pd.concat([X_test,  X_test_solar])
+    X_test = pd.concat([X_test, X_test_solar])
     y_train = pd.concat([y_train, y_train_solar])
-    y_test  = pd.concat([y_test,  y_test_solar])
+    y_test = pd.concat([y_test, y_test_solar])
 
-    train_test_values = [X_train.values, X_test.values, 
-                         y_train.values, y_test.values]
+    train_test_values = [
+        X_train.values,
+        X_test.values,
+        y_train.values,
+        y_test.values
+    ]
 
     train_test_sets = [X_train, X_test, y_train, y_test]
-    print('we zijn voor de fit')
-    # if fit:
-    #     #Setting up the grid of hyperparameters
-    #     param_grid = {'n_estimators': np.arange(80, 200), # was 200
-    #                   'max_depth': np.arange(4,10),  #was 4, 10
-    #                   'max_features': np.arange(3,6), #was 3, 6
-    #                   'min_samples_split': np.arange(4, 5)
-    #                   }
 
+    return features_needed, X_train, X_test, y_train, y_test, train_test_values, train_test_sets
 
-    #     rf = GridSearchCV(RandomForestRegressor(),
-    #                       param_grid=param_grid,
-    #                       cv=3,
-    #                       verbose=1,
-    #                       n_jobs=-1)
-    #     np.int = int
-    #     print('rf is geweest')
+def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
+    """
+    Random forest regression
 
-    #     # Fitting the training set - finding the best hyperparameters
-    #     rf.fit(X_train, y_train)
-    #     # rf.fit(X_train, y_train)
-    #     print('fit is geweest')
-    #     # Best hyperparameters found by the grid search
-    #     print(rf.best_params_)
+    Returns:
+        regr, y_test_predict, train_test_values, train_test_sets
+    """
 
-    #     # Random forest model with the best hyperparameters
-    #     regr = RandomForestRegressor(n_estimators=rf.best_params_['n_estimators'],
-    #                                  max_depth = rf.best_params_['max_depth'],
-    #                                  max_features=rf.best_params_['max_features'],
-    #                                  min_samples_split=rf.best_params_['min_samples_split'],
-    #                                  random_state=42,
-    #                                  oob_score=True
-    #                                  )
+    # Load the dataset and split into train/test sets
+    features_needed, X_train, X_test, y_train, y_test, train_test_values, train_test_sets = split_data(dataset)
+
     
+    print('Dataset loaded and split into train/test sets. Starting random forest regression...')
     if fit:
         params_grid_rf = [
     # bootstrap=True: all params available
@@ -490,14 +509,14 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
     },
 ]
         rf = RandomizedSearchCV(
-            RandomForestRegressor(random_state=23),
+            RandomForestRegressor(random_state=9),
             param_distributions=params_grid_rf,
             n_iter=40,
             cv=5,
             scoring="r2",
             verbose=1,
             n_jobs=-1,
-            random_state=23,
+            random_state=9,
             return_train_score=True
         )
 
@@ -518,6 +537,8 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
             random_state=9,
             oob_score=rf.best_params_['bootstrap']  
         )
+        
+        #Saving the random forest model in a file
         outdir = 'bem_output'
         if not os.path.exists(outdir):
             os.mkdir(outdir)
@@ -526,18 +547,18 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
         name_Rf = 'r2_' + str(round(rf.best_score_, 2)) + '_' + str(datetime.datetime.now().strftime("%Y-%m-%d_%H")) + '.pkl'
         name_Rf = os.path.join(outdir, name_Rf)
 
-        joblib.dump(regr, name_Rf)
         print('RF model save in : ', name_Rf)
+        # Fit the best random forest model to the training set and save it
+        regr.fit(X_train, y_train)
+        joblib.dump(regr, name_Rf)
 
     else:
         #Loading the random forest model saved
         print("Loading random forest model: ", model)
         regr = joblib.load(model)
 
-    # Fit the best random forest model to the training set
-    regr.fit(X_train, y_train)
-
     #Predict the radius for the training and testing sets
+    print("Evaluation of random forest regressor:")
     y_train_predict = regr.predict(X_train)
     y_test_predict = regr.predict(X_test)
 
@@ -546,7 +567,6 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
     print('R-2 score sklearn: ', r2_sklearn)
     pearson = pearsonr(y_test, y_test_predict)
     print(f'Test set, R-2 score: {test_score:>5.3}')
-    print(f"Train set, R-2 score: {regr.score(X_train, y_train):>5.3}")
     print(f'\nTest set, Pearson correlation: {pearson[0]:.3}')
 
     # Mean squared errors of the train and test set
@@ -975,12 +995,13 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
                           planets=None,
                           my_pred_planet=None,
                           my_true_radius=None,
-                          feature_name=None):
+                          feature_name=None, 
+                          model_name = 'Random forest'):
     """
     Compute and plot the LIME explanation for one or several radius predictions
     made by the random forest model
-    INPUTS: REGR = the random forest model
-            DATASET = the input dataset from which the RF is built
+    INPUTS: REGR = the random forest model, lightgbm or xgboost regression model for which we want to compute the LIME explanation
+            DATASET = the input dataset from which the model is built
             TRAIN_TEST_SET = the training and test sets
 
             PLANETS = list of indexes of the planets in the Test set,
@@ -988,13 +1009,15 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
                       Contains maximum 6 numbers
     or
             MY_PRED_PLANET = pandas dataset with the input features
-                        used by the random forest model
+                        used by the regression model
                         > mass, semi_major_axis, temp_eq, star_luminosity,
                           star_radius, star_teff, star_mass
             The my_pred_planet output of predict_radius() can be used as
             my_pred_planet input for this function
 
-            FEATURE_NAME = list of input features used by the random forest
+            FEATURE_NAME = list of input features used by the regression model
+
+            MODEL_NAME = str, name of the regression model used for the prediction, to be displayed in the title of the plot
 
     OUTPUTS: EXP = LIME explainer, contains the LIME radius prediction
     """
@@ -1011,7 +1034,7 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
             'star_teff',
             'star_mass',
         ]
-
+    
     # Data
     X_train, X_test, y_train, y_test = train_test_sets
     features = dataset.iloc[:, :-1].to_numpy()
@@ -1066,7 +1089,7 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
             print('True radius was not provided')
 
         lime_radius = float(np.ravel(exp.local_pred)[0])
-        rf_radius = float(exp.predicted_value)
+        model_radius = float(exp.predicted_value)
 
         # My plot of exp_as_pyplot()
         exp_list = exp.as_list()
@@ -1098,11 +1121,12 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         if my_true_radius is not None:
             textstr = '\n'.join((
                 r'True radius=%.2f$R_\oplus$' % (my_true_radius,),
-                r'RF radius=%.2f$R_\oplus$' % (rf_radius,),
+
+                f'{model_name} radius={model_radius:.2f}$R_\\oplus$',
                 r'LIME radius=%.2f$R_\oplus$' % (lime_radius,)))
         else:
-            textstr = '\n'.join((
-                r'RF radius=%.2f$R_\oplus$' % (rf_radius,),
+                textstr = '\n'.join((
+                f'{model_name} radius={model_radius:.2f}$R_\\oplus$',
                 r'LIME radius=%.2f$R_\oplus$' % (lime_radius,)))
         # place a text box in upper left in axes coords
         plt.text(-4, 0.1, textstr,
@@ -1110,36 +1134,23 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         return exp
     
     elif not planets: 
-        default_names = [ 
-            'WASP-50 b', 
-            'HATS-35 b', 
-            'TIC 279401253 b', 
-            'HAT-P-44 Bb', 
-            'Kepler-8 b', 
-            'Kepler-433 b' 
-            ] 
+        default_names = [
+                'K2-123 b',
+                'HATS-35 b',
+                'CoRoT-13 b',
+                'Kepler-75 b',
+                'WASP-17 b',
+                'Kepler-20 Ac'
+            ]
+
         for name in default_names: 
             matches = np.where(X_test.index == name)[0] 
             if len(matches) > 0: 
                 planets.append(matches[0]) 
     else: 
-        pass
-    # # the default planets from the original code aren't all in the test set; 
-    # elif not planets:
-    #     planets = list(range(min(6, len(X_test))))
-    # else:
-    #     pass
-    # original code    
-    # elif not planets: 
-    #     planets.append(np.where(X_test.index == 'TRAPPIST-1 g')[0][0])
-    #     planets.append(np.where(X_test.index == 'HATS-35 b')[0][0])
-    #     planets.append(np.where(X_test.index == 'CoRoT-13 b')[0][0])
-    #     planets.append(np.where(X_test.index == 'Kepler-75 b')[0][0])
-    #     planets.append(np.where(X_test.index == 'WASP-17 b')[0][0])
-    #     planets.append(np.where(X_test.index == 'Kepler-20 c')[0][0])
-    # else:
-    #     pass
 
+        pass
+   
     # keep maximum 6 planets to match the 3x2 subplot grid
     planets = planets[:6]
 
@@ -1156,7 +1167,7 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
             num_features=len(feature_name)
         )
         lime_radius = float(np.ravel(exp.local_pred)[0])
-        rf_radius = float(exp.predicted_value)
+        model_radius = float(exp.predicted_value)
 
         # My plot of exp_as_pyplot()
         exp_list = exp.as_list()
@@ -1187,7 +1198,7 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         true_radius = y_test.iloc[planet] if hasattr(y_test, 'iloc') else y_test[planet]
         textstr = '\n'.join((
             r'True radius=%.2f$R_\oplus$' % (true_radius,),
-            r'RF radius=%.2f$R_\oplus$' % (rf_radius,),
+            f'{model_name} radius={model_radius:.2f}$R_\\oplus$',
             r'LIME radius=%.2f$R_\oplus$' % (lime_radius,)))
         # place a text box in upper left in axes coords
         axs[j].text(0.68, 0.1, textstr,
@@ -1200,6 +1211,7 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
     ax = fig.add_subplot(111)
     ax.set_xscale('log')
     ax.set_yscale('log')
+    ax.set_title("Mass-Radius relation of the test set with LIME predicted planets")
     size = X_test.temp_eq.values
     plt.scatter(X_test.mass.values, y_test.values,
                 c=size, cmap=cm.magma_r)
