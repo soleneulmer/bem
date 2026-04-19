@@ -24,14 +24,13 @@ import importlib
 importlib.reload(fd)
 
 saved_pickle_model = "bem_output/r2_0.87_2026-04-17_13.pkl"
-
 def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv', 
                 cat_solar="data/solar_system_planets_catalog.csv", 
                 feature_names=['mass', 'semi_major_axis',
                                 'eccentricity', 'star_metallicity',
                                 'star_radius', 'star_teff',
                                 'star_mass', 'star_metallicity', 'radius'],
-                remove_shit_planets=True,
+                remove_bad_planets=True,
                 solar=True):
     """
     Select exoplanet in the catalogue which have mass and radius measurements
@@ -42,7 +41,9 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
     cat_exoplanet: CSV file from exoplanet.eu
     cat_solar: CSV file from Planetary sheet
     feature_names: list of features to select in the dataset.
-
+    remove_bad_planets: txt file with the names of the exoplanets we have left
+                        out of the dataset. The reason for removing these 
+                        planets are based on their uncertainties.
 
     Returns:
     dataset_exo = pandas dataframe with exoplanets with mass & radius 
@@ -68,13 +69,13 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
 
     #We remove planets with the otegi et al 2020 selection and when the error
     # is bigger then the value itself.
-    if remove_shit_planets:
-        shit_planet = pd.read_csv('data/shit_planets.txt', sep='\t', header=None, index_col=0)
-        for planet in shit_planet.index:
+    if remove_bad_planets:
+        bad_planet = pd.read_csv('data/bad_planets.txt', sep='\t', header=None, index_col=0)
+        for planet in bad_planet.index:
             if planet in dataset_exo.index:
                 dataset_exo = dataset_exo.drop(labels=planet)
     else:
-        print("No shit planets removed")
+        print("No bad planets removed")
 
     # Remove planets with NaN's
     dataset_exo = dataset_exo.dropna(axis=0, how='any')
@@ -120,6 +121,7 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
 
 def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv',
                         cat_solar="data/solar_system_planets_catalog.csv",
+                        remove_bad_planets=True,
                         reference_dataset=None, solar=True):
     """
     Select exoplanet in the catalogue which have uncertainty measurements as 
@@ -133,6 +135,12 @@ def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_
     Input:
     cat_exoplanet = CSV file from exoplanet.eu
     cat_solar = CSV file from planetary sheet.
+    remove_bad_planets: txt file with the names of the exoplanets we have left
+                        out of the dataset. The reason for removing these 
+                        planets are based on their uncertainties.
+    reference_dataset: dataset that can be used in order to only use planets 
+                       that you use in the original dataset from the 
+                       load_dataset() function. 
     
     Returns:
     dataset_exo = pandas dataframe with exoplanets with mass & radius measurements
@@ -185,7 +193,13 @@ def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_
                                                                'star_mass',
                                                                'star_teff',
                                                                'radius'])
-
+    if remove_bad_planets:
+        bad_planet = pd.read_csv('data/bad_planets.txt', sep='\t', header=None, index_col=0)
+        for planet in bad_planet.index:
+            if planet in dataset_exo.index:
+                dataset_exo = dataset_exo.drop(labels=planet)
+    else:
+        print("No bad planets removed")
     # Replace inf by NaN
     dataset_exo = dataset_exo.replace([np.inf, -np.inf], np.nan)
 
@@ -374,7 +388,6 @@ def load_dataset_RV(cat_exoplanet="data/exoplanet.eu_catalog_20-01-26_15_03_11.c
 
     return dataset_radial
 
-
 def split_data(dataset):
     """
     Create one consistent train/test split for both exoplanets and solar-system
@@ -406,11 +419,11 @@ def split_data(dataset):
         features,
         label,
         test_size=0.25,
-        random_state=23
+        random_state=9
     )
 
     default_names = [
-        'K2-123 b',
+        'TOI-561 b',
         'HATS-35 b',
         'CoRoT-13 b',
         'Kepler-75 b',
@@ -447,7 +460,7 @@ def split_data(dataset):
         features_solar,
         label_solar,
         test_size=0.25,
-        random_state=23
+        random_state=9
     )
 
     X_train = pd.concat([X_train, X_train_solar])
@@ -465,6 +478,7 @@ def split_data(dataset):
     train_test_sets = [X_train, X_test, y_train, y_test]
 
     return features_needed, X_train, X_test, y_train, y_test, train_test_values, train_test_sets
+
 
 def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
     """
@@ -509,14 +523,14 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
     },
 ]
         rf = RandomizedSearchCV(
-            RandomForestRegressor(random_state=23),
+            RandomForestRegressor(random_state=9),
             param_distributions=params_grid_rf,
             n_iter=40,
             cv=5,
             scoring="r2",
             verbose=1,
             n_jobs=-1,
-            random_state=23,
+            random_state=9,
             return_train_score=True
         )
 
@@ -1128,14 +1142,20 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
                 textstr = '\n'.join((
                 f'{model_name} radius={model_radius:.2f}$R_\\oplus$',
                 r'LIME radius=%.2f$R_\oplus$' % (lime_radius,)))
-        # place a text box in upper left in axes coords
-        plt.text(-4, 0.1, textstr,
-                 bbox={'boxstyle': 'round', 'facecolor': 'white'})
+        # place a text box in bottom right in axes coords
+        ax = plt.gca()
+        ax.text(
+            0.98, 0.02, textstr,
+            transform=ax.transAxes,
+            ha='right',
+            va='bottom',
+            bbox={'boxstyle': 'round', 'facecolor': 'white', 'alpha': 0.9}
+        )
         return exp
     
     elif not planets: 
         default_names = [
-                'K2-123 b',
+                'TOI-561 b',
                 'HATS-35 b',
                 'CoRoT-13 b',
                 'Kepler-75 b',
@@ -1184,6 +1204,8 @@ def plot_LIME_predictions(regr, dataset, train_test_sets,
         names.reverse()
         colors = ['C2' if x > 0 else 'C3' for x in vals]
         pos = np.arange(len(exp_list)) + .5
+        
+
 
         # Plotting
         axs[j].get_yaxis().set_visible(False)

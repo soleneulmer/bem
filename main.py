@@ -13,33 +13,42 @@ dataset_all = "data/exoplanet.eu_catalog_20-01-26_15_03_11.csv"
 cat_solar = 'data/solar_system_planets_catalog.csv'
 
 
+dataset = bem.load_dataset(remove_bad_planets=False)
+dataset = bem.load_dataset_errors(remove_bad_planets=False, reference_dataset=dataset)
+# otegi threshold data selection
+selection_uncertainty = (
+    (dataset['mass_error'] / dataset['mass'] < 0.25) &
+    (dataset['radius_error'] / dataset['radius'] < 0.08)
+)
+dataset = dataset[selection_uncertainty]
 
-dataset = load_dataset(cat_exoplanet=dataset_all,
-    cat_solar=cat_solar,remove_shit_planets=True)
+#remove K2-123 b 
+planets_to_remove = ['K2-123 b']
+dataset = dataset.drop(index=planets_to_remove, errors='ignore')
 
-
-# Remove planets where error >= measured value and save in txt file
-bad_planets = []
-
+# remove planets with uncertainties larger than the value of the parameter itself
+bad_planets = set()
 for col in dataset.columns:
     if col.endswith("_error"):
         base_col = col[:-6]
         if base_col in dataset.columns:
             mask = dataset[col] >= dataset[base_col]
-            for planet in dataset.index[mask]:
-                if planet not in bad_planets:
-                    bad_planets.append(planet)
+            bad_planets.update(dataset.index[mask])
 
-with open("data/shit_planets.txt", "w", encoding="utf-8") as f:
-    for planet in bad_planets:
-        f.write(f"{planet}\n")
+# save to a txt file
+with open("data/bad_planets.txt", "w", encoding="utf-8") as f:
+    for planet in sorted(bad_planets):
+        f.write(planet + "\n")
 
-print(f"The length of the bad_planets list is: {len(bad_planets)}")
-dataset = dataset.drop(index=bad_planets)
+for planet in bad_planets:
+    if planet in dataset.index:
+        dataset = dataset.drop(labels=planet)
 
+# bem.plot_dataset(dataset=dataset)
 
-
-
+# #select planet with lowest masses 
+# dataset = dataset.sort_values(by='mass').head(20)
+# print(dataset)
 
 regr, y_test_predict, train_test_values, train_test_sets = bem.random_forest_regression(
     dataset=dataset,
@@ -64,5 +73,4 @@ bem.plot_LIME_predictions(regr_lgbm, dataset, train_test_sets_lgbm, model_name="
 bem.plot_LIME_predictions(regr_xgb, dataset, train_test_sets_xgb, model_name="XGBoost")
 bem.plot_LIME_predictions(regr, dataset, train_test_sets, model_name="Random Forest")
 plt.show()
-
 
