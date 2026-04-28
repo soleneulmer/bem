@@ -5,11 +5,9 @@ from sklearn.model_selection import ShuffleSplit
 from sklearn.model_selection import learning_curve
 from sklearn.model_selection import validation_curve
 from sklearn.ensemble import RandomForestRegressor 
-from sklearn.metrics import r2_score, root_mean_squared_error
+from sklearn.metrics import r2_score
 from scipy.stats import multivariate_normal as mvn
 from scipy.stats import pearsonr
-from lightgbm import LGBMRegressor
-from xgboost import XGBRegressor
 import pandas as pd
 import datetime
 import os
@@ -23,9 +21,10 @@ import lime.lime_tabular
 import importlib
 importlib.reload(fd)
 
-saved_pickle_model = "bem_output/r2_0.87_2026-04-17_13.pkl"
-def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv', 
-                cat_solar="data/solar_system_planets_catalog.csv", 
+saved_pickle_model = "published_output/r2_0.87_2026-04-18_12.pkl"
+
+def load_dataset(cat_exoplanet='published_output/exoplanet.eu_catalog_20-01-26_15_03_11.csv', 
+                cat_solar="published_output/solar_system_planets_catalog.csv", 
                 feature_names=['mass', 'semi_major_axis',
                                 'eccentricity', 'star_metallicity',
                                 'star_radius', 'star_teff',
@@ -48,9 +47,6 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
     Returns:
     dataset_exo = pandas dataframe with exoplanets with mass & radius 
                   measurements. mass/radii are in Earth mass/radii
-                  
-    #TODO: Vraag aan solene wat de beste manier is om outliers in de functie te verwijderen. 
-    # Zij deed t direct uit de opgeslagen data, maar als mensen hun eigen data willen gebruiken gaat t lastig worden.
     """
     # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
     print("\nLoadint the exoplanet datast and solar system planets: ")
@@ -70,7 +66,7 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
     #We remove planets with the otegi et al 2020 selection and when the error
     # is bigger then the value itself.
     if remove_bad_planets:
-        bad_planet = pd.read_csv('data/bad_planets.txt', sep='\t', header=None, index_col=0)
+        bad_planet = pd.read_csv('published_output/bad_planets.txt', sep='\t', header=None, index_col=0)
         for planet in bad_planet.index:
             if planet in dataset_exo.index:
                 dataset_exo = dataset_exo.drop(labels=planet)
@@ -119,8 +115,8 @@ def load_dataset(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv'
     return dataset
 
 
-def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_11.csv',
-                        cat_solar="data/solar_system_planets_catalog.csv",
+def load_dataset_errors(cat_exoplanet='published_output/exoplanet.eu_catalog_20-01-26_15_03_11.csv',
+                        cat_solar="published_output/solar_system_planets_catalog.csv",
                         remove_bad_planets=True,
                         reference_dataset=None, solar=True):
     """
@@ -182,7 +178,6 @@ def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_
                                                  'radius', 'radius_error']]
 
     #Remove NaN's in features only
-    #TODO: find out why not here axis=0 en how='any'
     dataset_exo = dataset_exo.dropna(subset=['mass', 'semi_major_axis', 
                                             'star_radius', 'star_mass', 
                                                 'star_teff', 'radius'])
@@ -194,7 +189,7 @@ def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_
                                                                'star_teff',
                                                                'radius'])
     if remove_bad_planets:
-        bad_planet = pd.read_csv('data/bad_planets.txt', sep='\t', header=None, index_col=0)
+        bad_planet = pd.read_csv('published_output/bad_planets.txt', sep='\t', header=None, index_col=0)
         for planet in bad_planet.index:
             if planet in dataset_exo.index:
                 dataset_exo = dataset_exo.drop(labels=planet)
@@ -298,7 +293,7 @@ def load_dataset_errors(cat_exoplanet='data/exoplanet.eu_catalog_20-01-26_15_03_
     print('Final dataset length with errors is: ', len(dataset))
     return dataset    
 
-def load_dataset_RV(cat_exoplanet="data/exoplanet.eu_catalog_20-01-26_15_03_11.csv", 
+def load_dataset_RV(cat_exoplanet="published_output/exoplanet.eu_catalog_20-01-26_15_03_11.csv", 
                     feature_names=['mass', 'mass_error_min', 'mass_error_max',
                                    'semi_major_axis',
                                    'eccentricity',
@@ -388,111 +383,79 @@ def load_dataset_RV(cat_exoplanet="data/exoplanet.eu_catalog_20-01-26_15_03_11.c
 
     return dataset_radial
 
-def split_data(dataset):
+def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
     """
-    Create one consistent train/test split for both exoplanets and solar-system
-    planets, while forcing a few named planets into the test set.
+    We gonna do some random forest regression.
+    """
 
-    Returns:
-        features_needed
-        X_train, X_test, y_train, y_test
-        train_test_values
-        train_test_sets
-    """
+    # np.int = int needed, otherwise we will get the same error that does allow
+    # us to continue, but it prints the error everytime and that consumes a lot
+    # of time. 
+    np.int = int
     dataset_exo = dataset[:-8]
     dataset_solar = dataset[-8:]
 
-    features_needed = [
-        'mass',
-        'semi_major_axis',
-        'temp_eq',
-        'star_luminosity',
-        'star_radius',
-        'star_teff',
-        'star_mass'
-    ]
+    features_needed = ['mass', 'semi_major_axis', 'temp_eq', 'star_luminosity', 'star_radius', 'star_teff', 'star_mass']
 
     features = dataset_exo[features_needed]
     label = dataset_exo['radius']
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        features,
-        label,
-        test_size=0.25,
-        random_state=9
-    )
-
-    default_names = [
-        'TOI-561 b',
-        'HATS-35 b',
-        'CoRoT-13 b',
-        'Kepler-75 b',
-        'WASP-17 b',
-        'Kepler-20 Ac'
-    ]
-
-    for name in default_names:
-        if name in X_train.index and name not in X_test.index:
-            X_test = pd.concat([X_test, X_train.loc[[name]]])
-            y_test = pd.concat([y_test, y_train.loc[[name]]])
-
-            X_train = X_train.drop(index=name)
-            y_train = y_train.drop(index=name)
-
-            swap_candidates = [
-                idx for idx in X_test.index
-                if idx not in default_names and idx != name
-            ]
-
-            if len(swap_candidates) > 0:
-                swap_name = swap_candidates[0]
-
-                X_train = pd.concat([X_train, X_test.loc[[swap_name]]])
-                y_train = pd.concat([y_train, y_test.loc[[swap_name]]])
-
-                X_test = X_test.drop(index=swap_name)
-                y_test = y_test.drop(index=swap_name)
+    X_train, X_test, y_train, y_test = train_test_split(features,
+                                                        label,
+                                                        test_size = 0.25,
+                                                        random_state = 23)
 
     features_solar = dataset_solar[features_needed]
     label_solar = dataset_solar['radius']
 
     X_train_solar, X_test_solar, y_train_solar, y_test_solar = train_test_split(
-        features_solar,
-        label_solar,
-        test_size=0.25,
-        random_state=9
+        features_solar, label_solar, test_size=0.25, random_state=23
     )
 
-    X_train = pd.concat([X_train, X_train_solar])
-    X_test = pd.concat([X_test, X_test_solar])
-    y_train = pd.concat([y_train, y_train_solar])
-    y_test = pd.concat([y_test, y_test_solar])
 
-    train_test_values = [
-        X_train.values,
-        X_test.values,
-        y_train.values,
-        y_test.values
-    ]
+    X_train = pd.concat([X_train, X_train_solar])
+    X_test  = pd.concat([X_test,  X_test_solar])
+    y_train = pd.concat([y_train, y_train_solar])
+    y_test  = pd.concat([y_test,  y_test_solar])
+
+    train_test_values = [X_train.values, X_test.values, 
+                         y_train.values, y_test.values]
 
     train_test_sets = [X_train, X_test, y_train, y_test]
-
-    return features_needed, X_train, X_test, y_train, y_test, train_test_values, train_test_sets
-
-
-def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
-    """
-    Random forest regression
-
-    Returns:
-        regr, y_test_predict, train_test_values, train_test_sets
-    """
-
-    # Load the dataset and split into train/test sets
-    features_needed, X_train, X_test, y_train, y_test, train_test_values, train_test_sets = split_data(dataset)
-
     
-    print('Dataset loaded and split into train/test sets. Starting random forest regression...')
+    # if fit:
+    #     #Setting up the grid of hyperparameters
+    #     param_grid = {'n_estimators': np.arange(80, 200), # was 200
+    #                   'max_depth': np.arange(4,10),  #was 4, 10
+    #                   'max_features': np.arange(3,6), #was 3, 6
+    #                   'min_samples_split': np.arange(4, 5)
+    #                   }
+
+
+    #     rf = GridSearchCV(RandomForestRegressor(),
+    #                       param_grid=param_grid,
+    #                       cv=3,
+    #                       verbose=1,
+    #                       n_jobs=-1)
+    #     np.int = int
+    #     print('rf is geweest')
+
+    #     # Fitting the training set - finding the best hyperparameters
+    #     rf.fit(X_train, y_train)
+    #     # rf.fit(X_train, y_train)
+    #     print('fit is geweest')
+    #     # Best hyperparameters found by the grid search
+    #     print(rf.best_params_)
+
+    #     # Random forest model with the best hyperparameters
+    #     regr = RandomForestRegressor(n_estimators=rf.best_params_['n_estimators'],
+    #                                  max_depth = rf.best_params_['max_depth'],
+    #                                  max_features=rf.best_params_['max_features'],
+    #                                  min_samples_split=rf.best_params_['min_samples_split'],
+    #                                  random_state=42,
+    #                                  oob_score=True
+    #                                  )
+    
     if fit:
         params_grid_rf = [
     # bootstrap=True: all params available
@@ -523,14 +486,14 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
     },
 ]
         rf = RandomizedSearchCV(
-            RandomForestRegressor(random_state=9),
+            RandomForestRegressor(random_state=23),
             param_distributions=params_grid_rf,
             n_iter=40,
             cv=5,
             scoring="r2",
             verbose=1,
             n_jobs=-1,
-            random_state=9,
+            random_state=23,
             return_train_score=True
         )
 
@@ -548,12 +511,10 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
             max_samples=rf.best_params_['max_samples'] if rf.best_params_['bootstrap'] else None,
             min_impurity_decrease=rf.best_params_['min_impurity_decrease'],
             bootstrap=rf.best_params_['bootstrap'],
-            random_state=9,
+            random_state=23,
             oob_score=rf.best_params_['bootstrap']  
         )
-        
-        #Saving the random forest model in a file
-        outdir = 'bem_output'
+        outdir = 'published_output'
         if not os.path.exists(outdir):
             os.mkdir(outdir)
 
@@ -561,18 +522,18 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
         name_Rf = 'r2_' + str(round(rf.best_score_, 2)) + '_' + str(datetime.datetime.now().strftime("%Y-%m-%d_%H")) + '.pkl'
         name_Rf = os.path.join(outdir, name_Rf)
 
-        print('RF model save in : ', name_Rf)
-        # Fit the best random forest model to the training set and save it
-        regr.fit(X_train, y_train)
         joblib.dump(regr, name_Rf)
+        print('RF model save in : ', name_Rf)
 
     else:
         #Loading the random forest model saved
         print("Loading random forest model: ", model)
         regr = joblib.load(model)
 
+    # Fit the best random forest model to the training set
+    regr.fit(X_train, y_train)
+
     #Predict the radius for the training and testing sets
-    print("Evaluation of random forest regressor:")
     y_train_predict = regr.predict(X_train)
     y_test_predict = regr.predict(X_test)
 
@@ -581,6 +542,7 @@ def random_forest_regression(dataset, model=saved_pickle_model, fit=False):
     print('R-2 score sklearn: ', r2_sklearn)
     pearson = pearsonr(y_test, y_test_predict)
     print(f'Test set, R-2 score: {test_score:>5.3}')
+    print(f"Train set, R-2 score: {regr.score(X_train, y_train):>5.3}")
     print(f'\nTest set, Pearson correlation: {pearson[0]:.3}')
 
     # Mean squared errors of the train and test set
@@ -634,11 +596,11 @@ def computing_errorbars(regr, dataset_errors, train_test_set):
         radii_test_output_error[i] = rerr
 
     # Save the errorbars in a txt file
-    outdir = 'bem_output'
+    outdir = 'published_output'
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
-    filename = 'bem_output/test_radius_RF_errorbars.dat'
+    filename = 'published_output/test_radius_RF_errorbars.dat'
     print("Error bars of the test set are savid in: ", filename)
     np.savetxt(filename, radii_test_output_error)
 
@@ -791,6 +753,7 @@ def plot_dataset(dataset, predicted_radii=[], rv=False):
         plt.xlabel(r"Mass ($M_\oplus$)")
         plt.ylabel(r"Radius ($R_\oplus$)")
         plt.legend(loc='lower right', markerscale=0, handletextpad=0, handlelength=0)
+        # plt.savefig('Figures/dataset_without_outliers.png')
         plt.show()
 
     if rv:
@@ -856,12 +819,12 @@ def plot_learning_curve(regr, dataset, save=False, fit=False):
     features = dataset.iloc[:, :-1].values
     label = dataset.iloc[:, -1].values #radius
 
-    outdir = 'bem_output'
+    outdir = 'published_output'
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
     if fit:
-        cv = ShuffleSplit(n_splits=100, test_size=0.1, random_state=11)
+        cv = ShuffleSplit(n_splits=100, test_size=0.1, random_state=23)
         train_sizes, train_scores, test_scores= learning_curve(regr, 
                                                                 X = features,
                                                                 y = label,
@@ -871,9 +834,9 @@ def plot_learning_curve(regr, dataset, save=False, fit=False):
                                                                 verbose=1)
 
     else:
-        train_sizes = np.loadtxt("bem_output/lc_train_sizes.dat")
-        train_scores = np.loadtxt("bem_output/lc_train_scores.dat")
-        test_scores = np.loadtxt("bem_output/lc_test_scores.dat")
+        train_sizes = np.loadtxt("published_output/lc_train_sizes.dat")
+        train_scores = np.loadtxt("published_output/lc_train_scores.dat")
+        test_scores = np.loadtxt("published_output/lc_test_scores.dat")
 
     train_scores_mean = np.mean(train_scores, axis=1)
     train_scores_std = np.std(train_scores, axis=1)
@@ -923,7 +886,7 @@ def plot_validation_curves(regr, dataset, name='features', save=False,
     features = dataset.iloc[:, :-1]
     label = dataset.iloc[:, -1]
 
-    outdir = 'bem_output'
+    outdir = 'published_output'
     if not os.path.exists(outdir):
         os.mkdir(outdir)
 
@@ -950,14 +913,14 @@ def plot_validation_curves(regr, dataset, name='features', save=False,
                                                      n_jobs=-1, verbose=1)
     else:
         if name == 'features':
-            train_scores = np.loadtxt("bem_output/vc_features_train_scores.dat")
-            test_scores = np.loadtxt("bem_output/vc_features_test_scores.dat")
+            train_scores = np.loadtxt("published_output/vc_features_train_scores.dat")
+            test_scores = np.loadtxt("published_output/vc_features_test_scores.dat")
         elif name == 'tree':
-            train_scores = np.loadtxt("bem_output/vc_tree_train_scores.dat")
-            test_scores = np.loadtxt("bem_output/vc_tree_test_scores.dat")
+            train_scores = np.loadtxt("published_output/vc_tree_train_scores.dat")
+            test_scores = np.loadtxt("published_output/vc_tree_test_scores.dat")
         elif name == 'depth':
-            train_scores = np.loadtxt("bem_output/vc_depth_train_scores.dat")
-            test_scores = np.loadtxt("bem_output/vc_depth_test_scores.dat")
+            train_scores = np.loadtxt("published_output/vc_depth_train_scores.dat")
+            test_scores = np.loadtxt("published_output/vc_depth_test_scores.dat")
         else:
             pass
 
