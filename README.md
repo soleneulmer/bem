@@ -220,6 +220,3 @@ This work was performed as part of the Bachelor Research Project at Leiden Unive
 
 ---
 
-# License
-
-This project is released under the MIT License.
