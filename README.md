@@ -1,116 +1,225 @@
-## BEM :  beyond the exoplanet mass-radius relation with random forest
-Predicting the radius of exoplanets based on its planetary and stellar parameters
+# BEM: Beyond the Exoplanet Mass-Radius Relation with Machine Learning
+
+Predicting exoplanet radii and masses from planetary and stellar parameters using machine learning.
 
 <img src="https://github.com/soleneulmer/bem/raw/master/figures/Bem.png" width="200">
 
-[![Build Status](https://travis-ci.org/soleneulmer/bem.svg?branch=master)](https://travis-ci.org/soleneulmer/bem)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/soleneulmer/bem/LICENSE)
-[![PyPI version](https://badge.fury.io/py/bem.svg)](https://badge.fury.io/py/bem)
-[![arXiv](https://img.shields.io/badge/arXiv-1909.07392-%23B31B1B)](https://arxiv.org/abs/1909.07392)
 
-### Branca Edmée Marques
-A portuguese scientist who worked on nuclear physics in France with Marie Curie
+---
 
+## Bachelor Thesis
+### *Exploring the Properties of Exoplanets using Machine Learning*
 
-### To install bem
-Requirement: Python 3.7, Scikit-learn 0.20.3
+**Donna Aardoom** and **Sebastiaan Louwerse**
 
-```bash
-pip install bem
-```
-or
-```bash
-git clone https://github.com/soleneulmer/bem.git
-cd bem
-python setup.py install
-```
+Leiden Observatory, Leiden University
 
-### A simple decision tree
-#### to predict exoplanet radius
+---
 
-<img src="https://github.com/soleneulmer/bem/raw/master/figures/decision_tree.png" width="200">
+## Overview
 
-### How to run bem:
-#### 1. Load dataset and model
-```bash
-# Load exoplanet and solar system planets dataset
-dataset = bem.load_dataset()
-# Plot the dataset radius as a function of mass and equilibrium temperature
-bem.plot_dataset(dataset)
-```
-```bash
-# Build the random forest model and predict radius of the dataset
+This repository contains the code used in our Bachelor Research Project (BRP), which investigates whether machine learning models can predict exoplanet radii and masses from a combination of planetary and stellar parameters.
+
+Three regression algorithms are implemented and compared:
+
+- Random Forest Regression (RFR)
+- XGBoost
+- LightGBM
+
+The models are trained on confirmed exoplanets from the Extrasolar Planets Encyclopaedia and are accompanied by diagnostic plots and explainability methods using LIME.
+
+---
+
+## Features
+
+- Radius prediction
+- Mass prediction
+- Random Forest, XGBoost and LightGBM models
+- Feature importance analysis
+- Learning curves and validation curves
+- Residual analysis
+- LIME explanations
+- Uncertainty propagation
+- Outlier detection using Local Outlier Factor (LOF)
+
+---
+
+# Radius Prediction
+
+## 1. Train a model
+
+Build a machine learning model and predict exoplanet radii:
+
+```python
 regr, y_test_predict, _, train_test_sets = bem.random_forest_regression(dataset)
 ```
-#### 2. Predict the radius of your planet
 
-```bash
-# Predict a new radius				    with error
-# my_planet = [planetary_mass (Me, Mj)              or  my_planet = [planetary_mass, planetary mass error,
-#              semi major axis (AU),                                semi major axis, semi major axis error,
-#              eccentricity,					    eccentricity, eccentricity error,
-#              stellar radius (Rsun),				    stellar radius, stellar radius error,
-#              stellar effective temperature (K), 		    stellar effective temperature, teff error,
-#              stellar mass (Msun)]				    stellar mass (Msun), stellar mass error]
+---
 
-radius, my_pred_planet = bem.predict_radius(my_planet=np.array([[1.63,
-								 0.034,
-                                                 		 0.02,
-                                                 		 0.337,
-                                                 		 3505.0,
-                                                 		 0.342]]),
-                        		    my_name=np.array(['GJ 357 b']),
-                            		    regr=regr,
-                            		    jupiter_mass=False,
-					    error_bar=False)
-# If error_bar is True
-# print('Radius: ', radius[0][0], '+-', radius[1])
+## 2. Predict the radius of a new planet
+
+```python
+radius, my_pred_planet = bem.predict_radius(
+    my_planet=np.array([[1.63,
+                         0.034,
+                         0.02,
+                         0.337,
+                         3505.0,
+                         0.342]]),
+    my_name=np.array(['GJ 357 b']),
+    regr=regr,
+    jupiter_mass=False,
+    error_bar=False
+)
 ```
 
-#### 3. Compute error bars for the radius predictions
-```bash
-# Load exoplanet and solar system planets dataset with uncertainties
+If `error_bar=True`, uncertainties on the predicted radius are computed.
+
+---
+
+## 3. Compute prediction uncertainties
+
+```python
+# Load exoplanet dataset with uncertainties
 dataset_errors = bem.load_dataset_errors()
-# Compute the error bars for the test set planets
-radii_test_output_error, _ = bem.computing_errorbars(regr,
-                                                     dataset_errors,
-                                                     train_test_sets)
-# Plot the test set, true radius versus RF predicted radius
-bem.plot_true_predicted(train_test_sets,
-                        y_test_predict,
-                        radii_test_output_error)
 
+# Compute the error bars for the test-set planets
+radii_test_output_error, _ = bem.computing_errorbars(
+    regr,
+    dataset_errors,
+    train_test_sets
+)
+
+# Plot true radius versus predicted radius
+bem.plot_true_predicted(
+    train_test_sets,
+    y_test_predict,
+    radii_test_output_error
+)
 ```
 
-#### 4. Radial velocity dataset
-```bash
-# Load the radial velocity dataset
-dataset_rv = bem.load_dataset_RV()
-# Predict the radius of the RV dataset
-radii_RV_RF = regr.predict(dataset_rv)
-# Plot the predictions of the RV dataset
-bem.plot_dataset(dataset_rv, predicted_radii=radii_RV_RF, rv=True)
-```
+---
 
-#### 5. Diagnostic plots
-```bash
+## 4. Diagnostic plots
+
+```python
 # Plot the learning curve
 bem.plot_learning_curve(regr, dataset)
-# Plot the validation curves
+
+# Plot validation curves
 bem.plot_validation_curves(regr, dataset, name='features')
 bem.plot_validation_curves(regr, dataset, name='tree')
 bem.plot_validation_curves(regr, dataset, name='depth')
 ```
 
-#### 6. LIME explanations 
-see their [github](https://github.com/marcotcr/lime)
-```bash
-# Explain the RF predictions
-# of the exoplanets from the test set
-bem.plot_LIME_predictions(regr, dataset, train_test_sets)
-# LIME explanation for your planet
-# in this case GJ 357 b
-bem.plot_LIME_predictions(regr, dataset, train_test_sets,
-                          my_pred_planet=my_pred_planet,
-                          my_true_radius=1.166)
+---
+
+## 5. LIME explanations
+
+LIME (Local Interpretable Model-Agnostic Explanations) is used to explain individual model predictions.
+
+See the original repository:
+
+https://github.com/marcotcr/lime
+
+Explain the predictions for planets in the test set:
+
+```python
+bem.plot_LIME_predictions(
+    regr,
+    dataset,
+    train_test_sets
+)
 ```
+
+Generate a LIME explanation for a specific planet:
+
+```python
+bem.plot_LIME_predictions(
+    regr,
+    dataset,
+    train_test_sets,
+    my_pred_planet=my_pred_planet,
+    my_true_radius=1.166
+)
+```
+
+---
+
+# Mass Prediction
+
+Mass prediction is implemented analogously to radius prediction. Models are trained in logarithmic mass space and evaluated using:
+
+- Test-set coefficient of determination ($R^2$)
+- Mean fractional error ($\epsilon$)
+- Mean predicted-to-actual ratio
+
+Experiments include:
+
+- Full dataset training
+- Two-regime mass split
+- Three-regime mass split
+
+---
+
+# Explainability and Analysis
+
+The repository also includes:
+
+- Feature importance analysis
+- Residual plots
+- Learning curves
+- Validation curves
+- LIME explanations
+- Local Outlier Factor (LOF) outlier detection
+- Comparison with previous work
+
+---
+
+# Dataset
+
+Confirmed exoplanets are obtained from:
+
+**The Extrasolar Planets Encyclopaedia**
+
+http://exoplanet.eu
+
+The data are filtered based on observational uncertainties before being used for training and testing.
+
+---
+
+# Dependencies
+
+The project uses:
+
+- numpy
+- pandas
+- matplotlib
+- scikit-learn
+- xgboost
+- lightgbm
+- lime
+- scipy
+
+Install the required packages with:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+# Reference
+
+This work was performed as part of the Bachelor Research Project at Leiden University.
+
+> **Exploring the Properties of Exoplanets using Machine Learning**  
+> Donna Aardoom and Sebastiaan Louwerse  
+> Leiden Observatory, Leiden University (2026)
+
+---
+
+# License
+
+This project is released under the MIT License.
