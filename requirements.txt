@@ -1,11 +1,10 @@
 numpy
 pandas
 matplotlib
-scipy
 scikit-learn
 xgboost
 lightgbm
 lime
-seaborn
 joblib
-tqdm
+astropy
+uncertainties
